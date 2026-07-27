@@ -14,24 +14,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: ${{ github.event.repository.name }}
 
-      - name: Create archive
+      - name: Create archives
         run: |
-          PROJECT_NAME="${{ github.event.repository.name }}"
-          # Удаляем служебную папку .git из архива
-          rm -rf "$PROJECT_NAME/.git"
-          zip -r "${PROJECT_NAME}.zip" "$PROJECT_NAME"
+          REPO_NAME=$(basename "${{ github.repository }}")
+          ARCHIVE_DIR="release_tmp/$REPO_NAME"
 
-      - name: Upload archive as workflow artifact
+          # Создаём структуру: release_tmp/имя_проекта
+          mkdir -p "$ARCHIVE_DIR"
+
+          # Копируем всё, кроме временной папки и служебной .git
+          rsync -a --exclude='release_tmp' --exclude='.git' ./ "$ARCHIVE_DIR/"
+
+          # Собираем архивы (внутри будет папка с именем проекта)
+          cd release_tmp
+          zip -r "../$REPO_NAME.zip" "$REPO_NAME"
+
+      - name: Upload archives as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name }}
-          path: ${{ github.event.repository.name }}.zip
+          path: |
+            ${{ github.event.repository.name }}.zip
 
-      - name: Attach archive to release
+      - name: Attach archives to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ github.event.repository.name }}.zip
+          files: |
+            ${{ github.event.repository.name }}.zip
