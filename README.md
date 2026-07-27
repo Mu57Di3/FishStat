@@ -1,22 +1,19 @@
 # FishStat
-Дополнение для игры World of Warcraft ретеил версии. Собирает статистику по улову профессии рыбалка.
+Addon for World of Warcraft retail version. Collects catch statistics for the Fishing profession.
+
+
+
 ## Features
 
-- Session stats (cleared on `/reload` / logout) and persistent total stats
-- Catch list window with zone name, fishing skill, and skill bonuses in the title
-- Auto-hide in combat, collapse button, minimap icon
-- Slash: `/fishstat`, `/fishstat reset`, `/fishstat minimap`
+- A new session statistics is created upon using the /reload command or on logout/login, while overall statistics are also saved.
+- Integration with the Auctionator addon to fetch auction prices and display them on the session page, so you can see an approximate amount you can earn.
+- Automatically hides during combat and collapses into an icon near the map. Uses the system Fishing icon.
+- Console commands: /fishstat, /fishstat reset, /fishstat minimap
 
 ## Install
 
-1. Copy the `FishStat` folder into:
-   `World of Warcraft\_retail_\Interface\AddOns\FishStat`
-2. Enable **FishStat** in the character addon list
+1. Copy the `FishStat` folder to:
+   `World of Warcraft\_retail_\Interface\AddOns\`
+2. Enable **FishStat** in the AddOns menu.
 3. `/reload`
-
-## Usage
-
-- Left-click the minimap fishing icon (or `/fishstat`) to toggle the window
-- Switch **Session** / **Total** in the window header
-- Collapse with `-` / `+`; the window hides automatically in combat and restores after
 
