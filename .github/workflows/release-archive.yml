@@ -13,7 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Создаем архив с динамическим именем репозитория
       - name: Create Zip Archive
         run: |
                     REPO_NAME=$(basename ${{ github.repository }})
