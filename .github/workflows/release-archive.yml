@@ -1,38 +1,37 @@
-name: Create Release Archive
+name: Release Archive
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   archive:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: ${{ github.event.repository.name }}
 
-      - name: Create Zip Archive
+      - name: Create archive
         run: |
-                    REPO_NAME=$(basename ${{ github.repository }})
-                    ARCHIVE_DIR="release_tmp/$REPO_NAME"
-          
-          # Создаем структуру: release_tmp/имя_проекта
-                    mkdir -p "$ARCHIVE_DIR"
-          
-          # Копируем все файлы, кроме временной папки и служебной папки .git
-                    rsync -rr --exclude='release_tmp' --exclude='.git' ./ "$ARCHIVE_DIR/"
-          
-          # Переходим в папку сборки и создаем архив
-                    cd release_tmp
-                    zip -r "../$REPO_NAME.zip" "$REPO_NAME"
-                    tar -czf "../$REPO_NAME.tar.gz" "$REPO_NAME"
+          PROJECT_NAME="${{ github.event.repository.name }}"
+          # Удаляем служебную папку .git из архива
+          rm -rf "$PROJECT_NAME/.git"
+          zip -r "${PROJECT_NAME}.zip" "$PROJECT_NAME"
 
-      # Загружаем созданный файл в релиз
-      - name: Upload Archive to Release
+      - name: Upload archive as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}
+          path: ${{ github.event.repository.name }}.zip
+
+      - name: Attach archive to release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: "${{ github.event.repository.name }}.zip"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ github.event.repository.name }}.zip
