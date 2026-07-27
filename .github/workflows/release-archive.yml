@@ -1,0 +1,27 @@
+name: Create Release Archive
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Создаем архив с динамическим именем репозитория
+      - name: Create Zip Archive
+        run: |
+          zip -r "${{ github.event.repository.name }}.zip" . -x "*.git*"
+
+      # Загружаем созданный файл в релиз
+      - name: Upload Archive to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "${{ github.event.repository.name }}.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
