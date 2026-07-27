@@ -16,7 +16,19 @@ jobs:
       # Создаем архив с динамическим именем репозитория
       - name: Create Zip Archive
         run: |
-          zip -r "${{ github.event.repository.name }}.zip" . -x "*.git*"
+                    REPO_NAME=$(basename ${{ github.repository }})
+                    ARCHIVE_DIR="release_tmp/$REPO_NAME"
+          
+          # Создаем структуру: release_tmp/имя_проекта
+                    mkdir -p "$ARCHIVE_DIR"
+          
+          # Копируем все файлы, кроме временной папки и служебной папки .git
+                    rsync -rr --exclude='release_tmp' --exclude='.git' ./ "$ARCHIVE_DIR/"
+          
+          # Переходим в папку сборки и создаем архив
+                    cd release_tmp
+                    zip -r "../$REPO_NAME.zip" "$REPO_NAME"
+                    tar -czf "../$REPO_NAME.tar.gz" "$REPO_NAME"
 
       # Загружаем созданный файл в релиз
       - name: Upload Archive to Release
