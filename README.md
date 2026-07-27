@@ -1,7 +1,7 @@
 # FishStat
 Addon for World of Warcraft retail version. Collects catch statistics for the Fishing profession.
 
-
+[Russian read me](https://github.com/Mu57Di3/FishStat/blob/main/README_RU.md)
 
 ## Features
 
