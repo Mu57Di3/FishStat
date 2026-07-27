@@ -23,8 +23,12 @@ jobs:
           # Создаём структуру: release_tmp/имя_проекта
           mkdir -p "$ARCHIVE_DIR"
 
-          # Копируем всё, кроме временной папки и служебной .git
-          rsync -a --exclude='release_tmp' --exclude='.git' ./ "$ARCHIVE_DIR/"
+          # Копируем всё, кроме временной папки, .git и .github
+          rsync -a \
+            --exclude='release_tmp' \
+            --exclude='.git' \
+            --exclude='.github' \
+            ./ "$ARCHIVE_DIR/"
 
           # Собираем архивы (внутри будет папка с именем проекта)
           cd release_tmp
