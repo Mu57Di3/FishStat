@@ -567,7 +567,7 @@ function FishStat:RefreshUI()
 	local list = self:GetCatchList(showSession)
 	local width = frame.scrollFrame:GetWidth()
 	if width < 50 then
-		width = (frame:GetWidth() or 280) - 40
+		width = (frame:GetWidth() or 280) - 20
 	end
 	frame.content:SetWidth(width)
 
