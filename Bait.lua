@@ -1,24 +1,9 @@
 local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
--- Known bait / throw-back fish itemIDs (always shown when present in bags)
-FishStat.BAIT_DB = {
-	-- Tender Lumifin / Soft Glowfin (ru: Мягкий светоплав)
-	[238374] = true,
-}
-
--- Substrings for Soft Glowfin-class and common baits
-local NAME_NEEDLES = {
-	"светоплав",
-	"lumifin",
-	"glowfin",
-	"bloomtail",
-	"root crab",
-	"bait",
-	"lure",
-	"наживк",
-	"приманк",
-	"аттрактор",
+local TEEP_NEEDLES = {
+	["ruRU"] = {"рыбалк", "внимательност", "навык рыбной ловли", "Можно насадить на крючок", "наживк", "удочк", "бросьте"},
+	["enUS"] = {"fishing", "throw", "perception", "fishing lure", "lure to your fishing", "attach", "bait", "lure"},
 }
 
 local function getItemCount(itemID)
@@ -56,19 +41,6 @@ local function getItemSpell(itemID)
 	return nil
 end
 
-local function nameMatchesNeedle(name)
-	if not name then
-		return false
-	end
-	local lower = string.lower(name)
-	for _, needle in ipairs(NAME_NEEDLES) do
-		if lower:find(needle, 1, true) or name:find(needle, 1, true) then
-			return true
-		end
-	end
-	return false
-end
-
 local function getTooltipText(itemID)
 	if not C_TooltipInfo or not C_TooltipInfo.GetItemByID then
 		return nil
@@ -97,52 +69,20 @@ local function getTooltipText(itemID)
 	return table.concat(parts, "\n")
 end
 
---- True if tooltip describes a fishing bait / lure / throw-back fish (not potions etc.)
+
 local function tooltipLooksLikeFishingBait(itemID)
+	local locale = GetLocale();
+	local needles = TEEP_NEEDLES[locale] or TEEP_NEEDLES["enUS"]
 	local text = getTooltipText(itemID)
 	if not text or text == "" then
 		return false
 	end
 	local lower = string.lower(text)
-
-	-- Midnight throw-back fish: "Throw ... back into the water" + Fishing/Perception
-	--[[local isThrow = lower:find("throw", 1, true)
-		or text:find("Выброс", 1, true)
-		or text:find("выброс", 1, true)
-		or text:find("Бросьте", 1, true)
-		or text:find("бросьте", 1, true)
-		or text:find("Верните", 1, true)
-		or text:find("верните", 1, true)
-		or text:find("Бросить", 1, true)]]
-
-	local isFishStat = lower:find("fishing", 1, true)
-		or lower:find("perception", 1, true)
-		or lower:find("рыбалк", 1, true)
-		or lower:find("внимательност", 1, true)
-		or lower:find("навык рыбной ловли", 1, true)
-		or text:find("Можно насадить на крючок", 1, true)
-
-	--if isThrow or isFishStat then
-	if isFishStat then
-		return true
+	for _, needle in ipairs(needles) do
+		if lower:find(needle, 1, true) then
+			return true
+		end
 	end
-
-	-- Classic / expansion fishing lures on a pole
-	if lower:find("fishing lure", 1, true)
-		or lower:find("lure to your fishing", 1, true)
-		or lower:find("attach", 1, true) and lower:find("fishing", 1, true)
-		or text:find("наживк", 1, true)
-		or text:find("приманк", 1, true)
-		or text:find("удочк", 1, true) and (text:find("Рыбалк", 1, true) or text:find("рыбалк", 1, true) or lower:find("fishing", 1, true))
-	then
-		return true
-	end
-
-	-- "+N Fishing" style lure text with use/equip context is weaker alone; require lure/bait word
-	if (lower:find("bait", 1, true) or lower:find("lure", 1, true)) and isFishStat then
-		return true
-	end
-
 	return false
 end
 
@@ -150,7 +90,7 @@ local function isRecipe(itemID)
 	local name = getItemName(itemID)
 	local lower = string.lower(name);
 
-	return lower:find("рецепт", 1, true)
+	return lower:find(L["RECIPE"], 1, true)
 end
 
 --- Only fishing-related baits/lures/throw-back fish
