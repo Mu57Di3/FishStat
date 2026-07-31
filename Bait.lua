@@ -81,7 +81,6 @@ local function tooltipLooksLikeFishingBait(itemID)
 	local lower = string.lower(text)
 	for _, needle in ipairs(needles) do
 		if lower:find(needle, 1, true) then
-			print(name, needle);
 			return true
 		end
 	end
