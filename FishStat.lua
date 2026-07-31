@@ -74,7 +74,7 @@ function FishStat:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagsChanged")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnBagsChanged")
+	self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
 
 	self:InitUI()
 	self:InitMinimap()
@@ -120,6 +120,11 @@ function FishStat:OnZoneChanged()
 end
 
 function FishStat:OnSkillChanged()
+	self:RefreshUI()
+end
+
+function FishStat:OnPlayerEnteringWorld()
+	self:OnBagsChanged()
 	self:RefreshUI()
 end
 

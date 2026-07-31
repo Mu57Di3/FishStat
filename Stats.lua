@@ -2,6 +2,7 @@ local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
 local KEY_SEP = "\0"
+local MAX_MAP_PARENT_DEPTH = 20
 
 function FishStat:GetLocationKey(zone, subzone)
 	zone = zone or GetZoneText() or ""
@@ -18,10 +19,54 @@ function FishStat:GetLocationDisplayName(zone, subzone)
 	return L["ZONE_ONLY"]:format(zone)
 end
 
+function FishStat:GetCurrentFishingSkillLineID()
+	if not C_Map or not C_Map.GetBestMapForUnit or not C_Map.GetMapInfo then
+		return nil
+	end
+
+	local mapID = C_Map.GetBestMapForUnit("player")
+	local visited = {}
+
+	for _ = 1, MAX_MAP_PARENT_DEPTH do
+		if not mapID or mapID == 0 or visited[mapID] then
+			break
+		end
+
+		local skillLineID = self.fishingSkillLineByMapID[mapID]
+		if skillLineID then
+			return skillLineID
+		end
+
+		visited[mapID] = true
+		local mapInfo = C_Map.GetMapInfo(mapID)
+		mapID = mapInfo and mapInfo.parentMapID
+	end
+
+	return nil
+end
+
 function FishStat:GetFishingSkillInfo()
 	local _, _, _, fishing = GetProfessions()
 	if not fishing then
 		return nil
+	end
+
+	local skillLineID = self:GetCurrentFishingSkillLineID()
+	if skillLineID
+		and C_TradeSkillUI
+		and C_TradeSkillUI.GetProfessionInfoBySkillLineID
+	then
+		local info = C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLineID)
+		if info and (info.maxSkillLevel or 0) > 0 then
+			return {
+				name = info.professionName,
+				skillLevel = info.skillLevel or 0,
+				maxSkillLevel = info.maxSkillLevel or 0,
+				skillModifier = info.skillModifier or 0,
+				skillLineID = skillLineID,
+				expansionName = self.fishingExpansionBySkillLineID[skillLineID],
+			}
+		end
 	end
 
 	local name, _, skillLevel, maxSkillLevel, _, _, _, skillModifier = GetProfessionInfo(fishing)
@@ -39,7 +84,16 @@ function FishStat:FormatFishingSkill()
 		return L["FISHING_UNKNOWN"]
 	end
 
-	local text = L["FISHING_SKILL"]:format(info.skillLevel, info.maxSkillLevel)
+	local text
+	if info.expansionName and info.name then
+		text = ("%s %d/%d"):format(
+			info.name,
+			info.skillLevel,
+			info.maxSkillLevel
+		)
+	else
+		text = L["FISHING_SKILL"]:format(info.skillLevel, info.maxSkillLevel)
+	end
 	if info.skillModifier and info.skillModifier > 0 then
 		text = text .. L["FISHING_BONUS"]:format(info.skillModifier)
 	end
