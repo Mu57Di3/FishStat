@@ -15,9 +15,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create archives
+      - name: Set version and archive name
+        id: vars
         run: |
           REPO_NAME=$(basename "${{ github.repository }}")
+
+          # Версия из тега релиза, либо короткий SHA для ручного запуска
+          VERSION="${{ github.event.release.tag_name }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_SHA::7}"
+          fi
+
+          ARCHIVE_NAME="${REPO_NAME}-${VERSION}"
+
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "archive_name=$ARCHIVE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create archives
+        run: |
+          REPO_NAME="${{ steps.vars.outputs.repo_name }}"
+          ARCHIVE_NAME="${{ steps.vars.outputs.archive_name }}"
           ARCHIVE_DIR="release_tmp/$REPO_NAME"
 
           # Создаём структуру: release_tmp/имя_проекта
@@ -30,20 +48,20 @@ jobs:
             --exclude='.github' \
             ./ "$ARCHIVE_DIR/"
 
-          # Собираем архивы (внутри будет папка с именем проекта)
+          # Собираем архив (внутри будет папка с именем проекта)
           cd release_tmp
-          zip -r "../$REPO_NAME.zip" "$REPO_NAME"
+          zip -r "../$ARCHIVE_NAME.zip" "$REPO_NAME"
 
       - name: Upload archives as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.repository.name }}
+          name: ${{ steps.vars.outputs.archive_name }}
           path: |
-            ${{ github.event.repository.name }}.zip
+            ${{ steps.vars.outputs.archive_name }}.zip
 
       - name: Attach archives to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ${{ github.event.repository.name }}.zip
+            ${{ steps.vars.outputs.archive_name }}.zip
