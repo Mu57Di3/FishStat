@@ -71,15 +71,3 @@ function FishStat:FormatMoney(copper)
 	end
 	return tostring(copper)
 end
-
-function FishStat:FormatUnitAndLinePrice(unitPrice, count)
-	if not unitPrice or unitPrice <= 0 then
-		return nil
-	end
-	local unitText = self:FormatMoney(unitPrice)
-	local lineText = self:FormatMoney(unitPrice * (count or 1))
-	if not unitText or not lineText then
-		return nil
-	end
-	return unitText .. " | " .. lineText
-end
