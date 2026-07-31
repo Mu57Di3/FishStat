@@ -2,7 +2,7 @@ local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
 local ROW_HEIGHT = 24
-local TITLE_HEIGHT = 28
+local TITLE_HEIGHT = 42
 local TAB_HEIGHT = 24
 local SESSION_FOOTER_HEIGHT = 28
 local EXPANDED_HEIGHT_DEFAULT = 360
@@ -87,12 +87,19 @@ function FishStat:InitUI()
 	titleBar:SetPoint("TOPRIGHT", -4, -4)
 	titleBar:SetHeight(TITLE_HEIGHT)
 
-	local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	titleText:SetPoint("LEFT", 8, 0)
-	titleText:SetPoint("RIGHT", -56, 0)
-	titleText:SetJustifyH("LEFT")
-	titleText:SetWordWrap(false)
-	frame.titleText = titleText
+	local titleLocationText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	titleLocationText:SetPoint("TOPLEFT", 8, -6)
+	titleLocationText:SetPoint("TOPRIGHT", -56, -6)
+	titleLocationText:SetJustifyH("LEFT")
+	titleLocationText:SetWordWrap(false)
+	frame.titleLocationText = titleLocationText
+
+	local titleSkillText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	titleSkillText:SetPoint("BOTTOMLEFT", 8, 5)
+	titleSkillText:SetPoint("BOTTOMRIGHT", -56, 5)
+	titleSkillText:SetJustifyH("LEFT")
+	titleSkillText:SetWordWrap(false)
+	frame.titleSkillText = titleSkillText
 
 	local collapseBtn = CreateFrame("Button", nil, titleBar, "UIPanelButtonTemplate")
 	collapseBtn:SetSize(22, 20)
@@ -529,7 +536,8 @@ function FishStat:RefreshUI()
 
 	local locName = self:GetLocationDisplayName()
 	local skill = self:FormatFishingSkill()
-	frame.titleText:SetText(locName .. "  |  " .. skill)
+	frame.titleLocationText:SetText(locName)
+	frame.titleSkillText:SetText(skill)
 
 	if self.db.char.window.collapsed or not frame.body:IsShown() then
 		return
