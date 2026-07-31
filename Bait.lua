@@ -2,7 +2,7 @@ local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
 local TEEP_NEEDLES = {
-	["ruRU"] = {"рыбалк", "внимательност", "навык рыбной ловли", "Можно насадить на крючок", "наживк", "удочк", "бросьте"},
+	["ruRU"] = {"рыбалк", "внимательност", "навык рыбной ловли", "Можно насадить на крючок", "наживк", "бросьте"},
 	["enUS"] = {"fishing", "throw", "perception", "fishing lure", "lure to your fishing", "attach", "bait", "lure"},
 }
 
@@ -72,6 +72,7 @@ end
 
 local function tooltipLooksLikeFishingBait(itemID)
 	local locale = GetLocale();
+	local name = getItemName(itemID);
 	local needles = TEEP_NEEDLES[locale] or TEEP_NEEDLES["enUS"]
 	local text = getTooltipText(itemID)
 	if not text or text == "" then
@@ -80,6 +81,7 @@ local function tooltipLooksLikeFishingBait(itemID)
 	local lower = string.lower(text)
 	for _, needle in ipairs(needles) do
 		if lower:find(needle, 1, true) then
+			print(name, needle);
 			return true
 		end
 	end
