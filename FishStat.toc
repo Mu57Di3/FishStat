@@ -3,10 +3,24 @@
 ## Notes: Fishing catch statistics by zone and subzone (session + total).
 ## Notes-ruRU: Статистика улова по зоне и подзоне (сессия + всего).
 ## Author: FishStat
-## Version: 1.3.0
+## Version: 1.3.1
 ## SavedVariables: FishStatDB
 ## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0, Auctionator
 ## X-Embeds: Ace3, LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0
+## IconTexture: Interface/AddOns/FishStat/icon.blp
+
+# https://warcraft.wiki.gg/wiki/Addon_Categories
+## Category: Professions
+## Category-deDE: Berufe
+## Category-esES: Profesiones
+## Category-esMX: Profesiones
+## Category-frFR: Métiers
+## Category-itIT: Professioni
+## Category-koKR: 전문 기술
+## Category-ptBR: Profissões
+## Category-ruRU: Профессии
+## Category-zhCN: 专业
+## Category-zhTW: 專業技能
 
 embeds.xml
 
