@@ -381,7 +381,9 @@ local function acquireRow(frame, index)
 	row.price = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	row.price:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
 	row.price:SetJustifyH("RIGHT")
-	row.price:SetWidth(130)
+	row.price:SetWidth(150)
+	row.price:SetWordWrap(false)
+	row.price:SetNonSpaceWrap(false)
 	row.price:SetTextColor(1, 0.82, 0)
 	row.price:Hide()
 
@@ -406,7 +408,7 @@ local function acquireRow(frame, index)
 end
 
 local COUNT_ONLY_NAME_RIGHT = -78
-local COUNT_AND_PRICE_NAME_RIGHT = -214
+local COUNT_AND_PRICE_NAME_RIGHT = -234
 local BAIT_ROW_HEIGHT = 26
 
 local function acquireBaitRow(frame, index)
@@ -620,8 +622,11 @@ function FishStat:RefreshUI()
 		local priceTip
 		if showSession then
 			if item.kind == "item" and item.unitPrice then
-				priceText = self:FormatUnitAndLinePrice(item.unitPrice, item.count)
-				priceTip = L["AH_PRICE_TIP"]
+				priceText = self:FormatMoney(item.unitPrice * count)
+				local unitPriceText = self:FormatMoney(item.unitPrice)
+				if unitPriceText then
+					priceTip = L["AH_PRICE_TIP"]:format(unitPriceText)
+				end
 			elseif item.kind == "total" and item.sessionValue then
 				priceText = self:FormatMoney(item.sessionValue)
 				priceTip = L["AH_SESSION_TOTAL_TIP"]
