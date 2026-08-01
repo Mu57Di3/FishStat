@@ -57,7 +57,8 @@ function FishStat:GetFishingSkillInfo()
 		and C_TradeSkillUI.GetProfessionInfoBySkillLineID
 	then
 		local info = C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLineID)
-		if info and (info.maxSkillLevel or 0) > 0 then
+
+		if info and info.professionName then
 			return {
 				name = info.professionName,
 				skillLevel = info.skillLevel or 0,
