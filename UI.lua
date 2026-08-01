@@ -396,7 +396,7 @@ local function acquireRow(frame, index)
 	row.price = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	row.price:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
 	row.price:SetJustifyH("RIGHT")
-	row.price:SetWidth(150)
+	row.price:SetWidth(113)
 	row.price:SetWordWrap(false)
 	row.price:SetNonSpaceWrap(false)
 	row.price:SetTextColor(1, 0.82, 0)
@@ -423,7 +423,7 @@ local function acquireRow(frame, index)
 end
 
 local COUNT_ONLY_NAME_RIGHT = -78
-local COUNT_AND_PRICE_NAME_RIGHT = -234
+local COUNT_AND_PRICE_NAME_RIGHT = -197
 local BAIT_ROW_HEIGHT = 26
 
 local function acquireBaitRow(frame, index)
