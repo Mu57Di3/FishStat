@@ -101,6 +101,21 @@ function FishStat:InitUI()
 	titleSkillText:SetWordWrap(false)
 	frame.titleSkillText = titleSkillText
 
+	local titleSkillHit = CreateFrame("Frame", nil, titleBar)
+	titleSkillHit:SetPoint("BOTTOMLEFT", titleSkillText, "BOTTOMLEFT", 0, -2)
+	titleSkillHit:SetPoint("TOPRIGHT", titleSkillText, "TOPRIGHT", 0, 2)
+	titleSkillHit:SetScript("OnEnter", function(hit)
+		if not hit.showUnavailableTip then
+			return
+		end
+		GameTooltip:SetOwner(hit, "ANCHOR_TOP")
+		GameTooltip:SetText(L["FISHING_SKILL_UNAVAILABLE_TIP"])
+		GameTooltip:Show()
+	end)
+	titleSkillHit:SetScript("OnLeave", GameTooltip_Hide)
+	titleSkillHit:EnableMouse(false)
+	frame.titleSkillHit = titleSkillHit
+
 	local collapseBtn = CreateFrame("Button", nil, titleBar, "UIPanelButtonTemplate")
 	collapseBtn:SetSize(22, 20)
 	collapseBtn:SetPoint("RIGHT", -30, 0)
@@ -537,9 +552,18 @@ function FishStat:RefreshUI()
 	end
 
 	local locName = self:GetLocationDisplayName()
-	local skill = self:FormatFishingSkill()
+	local skill, showUnavailableTip = self:FormatFishingSkill()
 	frame.titleLocationText:SetText(locName)
 	frame.titleSkillText:SetText(skill)
+
+	local skillHit = frame.titleSkillHit
+	if skillHit then
+		skillHit.showUnavailableTip = showUnavailableTip
+		skillHit:EnableMouse(showUnavailableTip)
+		if not showUnavailableTip and GameTooltip:GetOwner() == skillHit then
+			GameTooltip:Hide()
+		end
+	end
 
 	if self.db.char.window.collapsed or not frame.body:IsShown() then
 		return

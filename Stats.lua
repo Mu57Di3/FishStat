@@ -19,6 +19,212 @@ function FishStat:GetLocationDisplayName(zone, subzone)
 	return L["ZONE_ONLY"]:format(zone)
 end
 
+function FishStat:EnsureFishingSkillCache()
+	local char = self.db and self.db.char
+	if not char then
+		return nil
+	end
+	if type(char.fishingSkillCache) ~= "table" then
+		char.fishingSkillCache = {}
+	end
+	return char.fishingSkillCache
+end
+
+function FishStat:GetCachedFishingSkillInfo(skillLineID)
+	local cache = self:EnsureFishingSkillCache()
+	if not cache or not skillLineID then
+		return nil
+	end
+	-- SavedVariables may stringify numeric keys across sessions.
+	return cache[skillLineID] or cache[tostring(skillLineID)]
+end
+
+function FishStat:CacheFishingSkillInfo(skillLineID, info)
+	if not skillLineID or not info then
+		return
+	end
+	if not info.maxSkillLevel or info.maxSkillLevel <= 0 then
+		return
+	end
+
+	local cache = self:EnsureFishingSkillCache()
+	if not cache then
+		return
+	end
+
+	local key = tostring(skillLineID)
+	cache[key] = {
+		name = info.name,
+		skillLevel = info.skillLevel or 0,
+		maxSkillLevel = info.maxSkillLevel,
+		skillModifier = info.skillModifier or 0,
+		skillLineID = skillLineID,
+		expansionName = info.expansionName,
+	}
+	-- Drop legacy numeric-key entry if present.
+	if cache[skillLineID] and type(skillLineID) == "number" then
+		cache[skillLineID] = nil
+	end
+end
+
+local function skillNamesMatch(a, b)
+	if not a or not b then
+		return false
+	end
+	a = strlower(strtrim(a))
+	b = strlower(strtrim(b))
+	if a == "" or b == "" then
+		return false
+	end
+	if a == b then
+		return true
+	end
+	-- "Классическая рыбная ловля" vs "Рыбная ловля"
+	if strfind(a, b, 1, true) or strfind(b, a, 1, true) then
+		return true
+	end
+	-- Declined forms (ruRU |3-6(%s)|) share a short byte-prefix.
+	local prefixLen = 8
+	return #a >= prefixLen and #b >= prefixLen and strsub(a, 1, prefixLen) == strsub(b, 1, prefixLen)
+end
+
+local function isPlausibleSkillUp(entry, newLevel)
+	if not entry then
+		return false
+	end
+	local current = entry.skillLevel or 0
+	if newLevel <= current then
+		return false
+	end
+	-- Skill-ups are small steps; reject unrelated profession jumps.
+	if newLevel - current > 10 then
+		return false
+	end
+	local maxSkill = entry.maxSkillLevel or 0
+	if maxSkill > 0 and newLevel > maxSkill then
+		return false
+	end
+	return true
+end
+
+local function buildSkillUpPattern(template)
+	-- ruRU: "|3-6(%s) повышается до %d." — chat text has declined name, not |3-6(...).
+	template = template:gsub("|%d+%-%d+%((.-)%)", "%1")
+	-- Chat lines often omit the trailing period from the global string.
+	template = template:gsub("[%s%.]+$", "")
+	local markS, markD = "\001", "\002"
+	template = template:gsub("%%s", markS):gsub("%%d", markD)
+	template = template:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+	template = template:gsub(markS, "(.+)"):gsub(markD, "(%%d+)")
+	return "^" .. template .. "%s*%.?$"
+end
+
+local function parseSkillUpMessage(message)
+	message = strtrim(message)
+	message = message:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+	message = message:gsub("|H.-|h(.-)|h", "%1")
+
+	if ERR_SKILL_UP_SI then
+		local template = ERR_SKILL_UP_SI:gsub("|%d+%-%d+%((.-)%)", "%1")
+		local sPos = template:find("%%s", 1, true)
+		local dPos = template:find("%%d", 1, true)
+		local levelFirst = dPos and sPos and dPos < sPos
+		local pattern = buildSkillUpPattern(ERR_SKILL_UP_SI)
+		local first, second = message:match(pattern)
+		if first and second then
+			if levelFirst then
+				return second, first
+			end
+			return first, second
+		end
+	end
+
+	-- Locale-independent fallbacks (period optional).
+	local skillName, levelStr = message:match("^(.+)%s+повышается до%s+(%d+)%s*%.?$")
+	if skillName then
+		return skillName, levelStr
+	end
+	skillName, levelStr = message:match("^Your skill in%s+(.+)%s+has increased to%s+(%d+)%s*%.?$")
+	if skillName then
+		return skillName, levelStr
+	end
+
+	return nil, nil
+end
+
+local function isFishingSkillUpName(skillName)
+	if not skillName then
+		return false
+	end
+	if PROFESSIONS_FISHING and skillNamesMatch(PROFESSIONS_FISHING, skillName) then
+		return true
+	end
+	local lower = strlower(skillName)
+	-- enUS / ruRU fishing tokens in expansion skill titles.
+	if strfind(lower, "fish", 1, true) or strfind(lower, "рыбн", 1, true) then
+		return true
+	end
+	return false
+end
+
+-- When API levels are unavailable, skill-ups still arrive via CHAT_MSG_SKILL.
+-- Bump the matching cached fishing skill line so the UI stays current.
+function FishStat:UpdateFishingSkillCacheFromSkillUp(skillName, newLevel)
+	newLevel = tonumber(newLevel)
+	if not skillName or not newLevel or newLevel <= 0 then
+		return false
+	end
+	if not isFishingSkillUpName(skillName) then
+		return false
+	end
+
+	local cache = self:EnsureFishingSkillCache()
+	if not cache then
+		return false
+	end
+
+	local function bump(skillLineID, entry)
+		if not entry or not isPlausibleSkillUp(entry, newLevel) then
+			return false
+		end
+		entry.skillLevel = newLevel
+		-- Prefer the fuller live skill-up title for later matching.
+		if skillName and skillName ~= "" then
+			entry.name = skillName
+		end
+		self:CacheFishingSkillInfo(skillLineID, entry)
+		return true
+	end
+
+	local currentID = self:GetCurrentFishingSkillLineID()
+	if currentID then
+		local current = self:GetCachedFishingSkillInfo(currentID)
+		if current and bump(currentID, current) then
+			return true
+		end
+	end
+
+	for key, entry in pairs(cache) do
+		local skillLineID = entry.skillLineID or tonumber(key) or key
+		if skillNamesMatch(entry.name, skillName) and bump(skillLineID, entry) then
+			return true
+		end
+	end
+
+	return false
+end
+
+function FishStat:OnChatMsgSkill(_, message)
+	if type(message) ~= "string" or message == "" then
+		return
+	end
+
+	local skillName, levelStr = parseSkillUpMessage(message)
+	if self:UpdateFishingSkillCacheFromSkillUp(skillName, levelStr) then
+		self:RefreshUI()
+	end
+end
+
 function FishStat:GetCurrentFishingSkillLineID()
 	if not C_Map or not C_Map.GetBestMapForUnit or not C_Map.GetMapInfo then
 		return nil
@@ -57,17 +263,33 @@ function FishStat:GetFishingSkillInfo()
 		and C_TradeSkillUI.GetProfessionInfoBySkillLineID
 	then
 		local info = C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLineID)
+		local expansionName = self.fishingExpansionBySkillLineID[skillLineID]
+		local maxSkillLevel = info and info.maxSkillLevel or 0
 
-		if info and info.professionName then
-			return {
+		if info and info.professionName and maxSkillLevel > 0 then
+			local result = {
 				name = info.professionName,
 				skillLevel = info.skillLevel or 0,
-				maxSkillLevel = info.maxSkillLevel or 0,
+				maxSkillLevel = maxSkillLevel,
 				skillModifier = info.skillModifier or 0,
 				skillLineID = skillLineID,
-				expansionName = self.fishingExpansionBySkillLineID[skillLineID],
+				expansionName = expansionName,
 			}
+			self:CacheFishingSkillInfo(skillLineID, result)
+			return result
 		end
+
+		local cached = self:GetCachedFishingSkillInfo(skillLineID)
+		if cached then
+			return cached
+		end
+
+		return {
+			name = info and info.professionName or nil,
+			skillLineID = skillLineID,
+			expansionName = expansionName,
+			levelsUnknown = true,
+		}
 	end
 
 	local name, _, skillLevel, maxSkillLevel, _, _, _, skillModifier = GetProfessionInfo(fishing)
@@ -79,10 +301,17 @@ function FishStat:GetFishingSkillInfo()
 	}
 end
 
-function FishStat:FormatFishingSkill()
-	local info = self:GetFishingSkillInfo()
+function FishStat:FormatFishingSkill(info)
+	info = info or self:GetFishingSkillInfo()
 	if not info then
-		return L["FISHING_UNKNOWN"]
+		return L["FISHING_UNKNOWN"], false
+	end
+
+	if info.levelsUnknown then
+		if info.name then
+			return L["FISHING_SKILL_UNAVAILABLE"]:format(info.name), true
+		end
+		return L["FISHING_UNKNOWN"], false
 	end
 
 	local text
@@ -98,7 +327,7 @@ function FishStat:FormatFishingSkill()
 	if info.skillModifier and info.skillModifier > 0 then
 		text = text .. L["FISHING_BONUS"]:format(info.skillModifier)
 	end
-	return text
+	return text, false
 end
 
 local function ensureBucket(store, key, displayName)
