@@ -101,6 +101,10 @@ function FishStat:CollectKnownCatchItemIDs()
 	return known, meta
 end
 
+local ITEM_CLASS_TRADEGOODS = (Enum and Enum.ItemClass and Enum.ItemClass.Tradegoods) or 7
+-- Tradegoods subclass: Cooking (meat, fish, and other cooking reagents)
+local ITEM_SUBCLASS_COOKING = 8
+
 local function getBagItemCount(itemID)
 	if C_Item and C_Item.GetItemCount then
 		return C_Item.GetItemCount(itemID, false, false) or 0
@@ -120,7 +124,33 @@ local function getLastBagIndex()
 	return 5
 end
 
---- Scan bags for items that appear in catch history; value via Auctionator.
+--- True if item is a cooking reagent (Tradegoods / Cooking).
+function FishStat:IsCookingIngredient(itemID)
+	if not itemID then
+		return false
+	end
+
+	local classID, subclassID
+	if C_Item and C_Item.GetItemInfoInstant then
+		classID, subclassID = select(6, C_Item.GetItemInfoInstant(itemID))
+	elseif GetItemInfoInstant then
+		classID, subclassID = select(6, GetItemInfoInstant(itemID))
+	else
+		local info
+		if C_Item and C_Item.GetItemInfo then
+			info = { C_Item.GetItemInfo(itemID) }
+		elseif GetItemInfo then
+			info = { GetItemInfo(itemID) }
+		end
+		if info then
+			classID, subclassID = info[12], info[13]
+		end
+	end
+
+	return classID == ITEM_CLASS_TRADEGOODS and subclassID == ITEM_SUBCLASS_COOKING
+end
+
+--- Scan bags for cooking ingredients from catch history; value via Auctionator.
 --- Returns { items = { {itemID, name, link, quality, texture, count, unitPrice, lineValue}, ... }, totalValue = copper }.
 function FishStat:ScanInventoryFishValue()
 	local known, meta = self:CollectKnownCatchItemIDs()
@@ -146,7 +176,7 @@ function FishStat:ScanInventoryFishValue()
 				link = GetContainerItemLink(bag, slot)
 				itemID = link and tonumber(link:match("item:(%d+)"))
 			end
-			if itemID and known[itemID] and not seen[itemID] then
+			if itemID and known[itemID] and not seen[itemID] and self:IsCookingIngredient(itemID) then
 				seen[itemID] = true
 				local count = getBagItemCount(itemID)
 				if count > 0 then
