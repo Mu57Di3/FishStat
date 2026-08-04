@@ -29,6 +29,7 @@ Locales\ruRU.lua
 
 FishStat.lua
 Prices.lua
+InventoryValue.lua
 Zones.lua
 Stats.lua
 Bait.lua
