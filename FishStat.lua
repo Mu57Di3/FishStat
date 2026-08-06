@@ -51,6 +51,7 @@ function FishStat:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("FishStatDB", defaults, true)
 	self:MigrateWindowSettings()
 	self.session = {}
+	self.inventoryValueExcluded = {}
 	self.baitList = {}
 	self.wasShownBeforeCombat = false
 	self.wantShowAfterCombat = false
