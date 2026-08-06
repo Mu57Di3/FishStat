@@ -22,6 +22,7 @@ local defaults = {
 		},
 		total = {},
 		selectedBait = nil,
+		fishingSkillCache = {},
 	},
 }
 
@@ -50,6 +51,7 @@ function FishStat:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("FishStatDB", defaults, true)
 	self:MigrateWindowSettings()
 	self.session = {}
+	self.inventoryValueExcluded = {}
 	self.baitList = {}
 	self.wasShownBeforeCombat = false
 	self.wantShowAfterCombat = false
@@ -71,10 +73,12 @@ function FishStat:OnEnable()
 	self:RegisterEvent("ZONE_CHANGED_INDOORS", "OnZoneChanged")
 	self:RegisterEvent("SKILL_LINES_CHANGED", "OnSkillChanged")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "OnSkillChanged")
+	self:RegisterEvent("CHAT_MSG_SKILL", "OnChatMsgSkill")
+	self:RegisterEvent("TRADE_SKILL_SHOW", "OnTradeSkillShow")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagsChanged")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnBagsChanged")
+	self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
 
 	self:InitUI()
 	self:InitMinimap()
@@ -120,6 +124,15 @@ function FishStat:OnZoneChanged()
 end
 
 function FishStat:OnSkillChanged()
+	self:RefreshUI()
+end
+
+function FishStat:OnTradeSkillShow()
+	self:RefreshUI()
+end
+
+function FishStat:OnPlayerEnteringWorld()
+	self:OnBagsChanged()
 	self:RefreshUI()
 end
 

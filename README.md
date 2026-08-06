@@ -8,7 +8,9 @@ Addon for World of Warcraft retail version. Collects catch statistics for the Fi
 - A new session statistics is created upon using the /reload command or on logout/login, while overall statistics are also saved.
 - Integration with the Auctionator addon to fetch auction prices and display them on the session page, so you can see an approximate amount you can earn.
 - Automatically hides during combat and collapses into an icon near the map. Uses the system Fishing icon.
-- Console commands: /fishstat, /fishstat reset, /fishstat minimap
+- In each zone, shows the fishing skill level for the expansion that zone belongs to. For correct operation, open the Fishing Journal when you log in.
+- A window showing “fish” in your inventory and its value. Data is taken from the addon’s catch database.
+- Console commands: `/fishstat`, `/fishstat reset`, `/fishstat minimap`
 
 ## Install
 

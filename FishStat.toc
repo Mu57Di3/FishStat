@@ -3,7 +3,7 @@
 ## Notes: Fishing catch statistics by zone and subzone (session + total).
 ## Notes-ruRU: Статистика улова по зоне и подзоне (сессия + всего).
 ## Author: FishStat
-## Version: 1.3.3
+## Version: 1.4.0
 ## SavedVariables: FishStatDB
 ## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0, Auctionator
 ## X-Embeds: Ace3, LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0
@@ -29,6 +29,8 @@ Locales\ruRU.lua
 
 FishStat.lua
 Prices.lua
+InventoryValue.lua
+Zones.lua
 Stats.lua
 Bait.lua
 UI.lua

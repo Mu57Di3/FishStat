@@ -2,7 +2,7 @@ local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
 local ROW_HEIGHT = 24
-local TITLE_HEIGHT = 28
+local TITLE_HEIGHT = 42
 local TAB_HEIGHT = 24
 local SESSION_FOOTER_HEIGHT = 28
 local EXPANDED_HEIGHT_DEFAULT = 360
@@ -87,12 +87,34 @@ function FishStat:InitUI()
 	titleBar:SetPoint("TOPRIGHT", -4, -4)
 	titleBar:SetHeight(TITLE_HEIGHT)
 
-	local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	titleText:SetPoint("LEFT", 8, 0)
-	titleText:SetPoint("RIGHT", -56, 0)
-	titleText:SetJustifyH("LEFT")
-	titleText:SetWordWrap(false)
-	frame.titleText = titleText
+	local titleLocationText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	titleLocationText:SetPoint("TOPLEFT", 8, -6)
+	titleLocationText:SetPoint("TOPRIGHT", -56, -6)
+	titleLocationText:SetJustifyH("LEFT")
+	titleLocationText:SetWordWrap(false)
+	frame.titleLocationText = titleLocationText
+
+	local titleSkillText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	titleSkillText:SetPoint("BOTTOMLEFT", 8, 5)
+	titleSkillText:SetPoint("BOTTOMRIGHT", -56, 5)
+	titleSkillText:SetJustifyH("LEFT")
+	titleSkillText:SetWordWrap(false)
+	frame.titleSkillText = titleSkillText
+
+	local titleSkillHit = CreateFrame("Frame", nil, titleBar)
+	titleSkillHit:SetPoint("BOTTOMLEFT", titleSkillText, "BOTTOMLEFT", 0, -2)
+	titleSkillHit:SetPoint("TOPRIGHT", titleSkillText, "TOPRIGHT", 0, 2)
+	titleSkillHit:SetScript("OnEnter", function(hit)
+		if not hit.showUnavailableTip then
+			return
+		end
+		GameTooltip:SetOwner(hit, "ANCHOR_TOP")
+		GameTooltip:SetText(L["FISHING_SKILL_UNAVAILABLE_TIP"])
+		GameTooltip:Show()
+	end)
+	titleSkillHit:SetScript("OnLeave", GameTooltip_Hide)
+	titleSkillHit:EnableMouse(false)
+	frame.titleSkillHit = titleSkillHit
 
 	local collapseBtn = CreateFrame("Button", nil, titleBar, "UIPanelButtonTemplate")
 	collapseBtn:SetSize(22, 20)
@@ -229,11 +251,30 @@ function FishStat:InitUI()
 
 	local applyBtn = CreateFrame("Button", "FishStatApplyBaitButton", baitPanel, "SecureActionButtonTemplate,UIPanelButtonTemplate")
 	applyBtn:SetSize(110, 24)
-	applyBtn:SetPoint("BOTTOMLEFT", 0, 4)
+	-- Align with valueInventoryBtn on body (same bottom inset)
+	applyBtn:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 4, 2)
 	applyBtn:SetText(L["APPLY"])
 	applyBtn:RegisterForClicks("AnyUp", "AnyDown")
 	applyBtn:Disable()
 	frame.applyBaitBtn = applyBtn
+
+	-- Inventory valuation (Auctionator) — bottom-right of body
+	local valueBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
+	valueBtn:SetSize(150, 24)
+	valueBtn:SetPoint("BOTTOMRIGHT", -22, 2)
+	valueBtn:SetText(L["VALUE_INVENTORY"])
+	valueBtn:SetFrameLevel(body:GetFrameLevel() + 10)
+	valueBtn:Hide()
+	valueBtn:SetScript("OnClick", function()
+		FishStat:ShowInventoryValueWindow()
+	end)
+	valueBtn:SetScript("OnEnter", function(btn)
+		GameTooltip:SetOwner(btn, "ANCHOR_TOP")
+		GameTooltip:SetText(L["VALUE_INVENTORY_TIP"])
+		GameTooltip:Show()
+	end)
+	valueBtn:SetScript("OnLeave", GameTooltip_Hide)
+	frame.valueInventoryBtn = valueBtn
 
 	-- Bottom-right resize grip
 	local resize = CreateFrame("Button", nil, frame)
@@ -302,6 +343,7 @@ function FishStat:HideWindow(fromCombat)
 	if self.frame then
 		self.frame:Hide()
 	end
+	self:HideInventoryValueWindow()
 	if not fromCombat then
 		self.wantShowAfterCombat = false
 		self.wasShownBeforeCombat = false
@@ -374,7 +416,9 @@ local function acquireRow(frame, index)
 	row.price = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	row.price:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
 	row.price:SetJustifyH("RIGHT")
-	row.price:SetWidth(130)
+	row.price:SetWidth(113)
+	row.price:SetWordWrap(false)
+	row.price:SetNonSpaceWrap(false)
 	row.price:SetTextColor(1, 0.82, 0)
 	row.price:Hide()
 
@@ -399,7 +443,7 @@ local function acquireRow(frame, index)
 end
 
 local COUNT_ONLY_NAME_RIGHT = -78
-local COUNT_AND_PRICE_NAME_RIGHT = -214
+local COUNT_AND_PRICE_NAME_RIGHT = -197
 local BAIT_ROW_HEIGHT = 26
 
 local function acquireBaitRow(frame, index)
@@ -528,12 +572,32 @@ function FishStat:RefreshUI()
 	end
 
 	local locName = self:GetLocationDisplayName()
-	local skill = self:FormatFishingSkill()
-	frame.titleText:SetText(locName .. "  |  " .. skill)
+	local skill, showUnavailableTip = self:FormatFishingSkill()
+	frame.titleLocationText:SetText(locName)
+	frame.titleSkillText:SetText(skill)
+
+	local skillHit = frame.titleSkillHit
+	if skillHit then
+		skillHit.showUnavailableTip = showUnavailableTip
+		skillHit:EnableMouse(showUnavailableTip)
+		if not showUnavailableTip and GameTooltip:GetOwner() == skillHit then
+			GameTooltip:Hide()
+		end
+	end
 
 	if self.db.char.window.collapsed or not frame.body:IsShown() then
 		return
 	end
+
+	local auctionatorReady = self:IsAuctionatorReady()
+	if frame.valueInventoryBtn then
+		if auctionatorReady then
+			frame.valueInventoryBtn:Show()
+		else
+			frame.valueInventoryBtn:Hide()
+		end
+	end
+	local footerHeight = auctionatorReady and SESSION_FOOTER_HEIGHT or 4
 
 	local tab = self:GetActiveTab()
 	setTabActive(frame.sessionBtn, tab == "session")
@@ -561,7 +625,7 @@ function FishStat:RefreshUI()
 		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, SESSION_FOOTER_HEIGHT)
 	else
 		frame.showAllCheck:Hide()
-		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, 4)
+		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, footerHeight)
 	end
 
 	local list = self:GetCatchList(showSession)
@@ -612,8 +676,11 @@ function FishStat:RefreshUI()
 		local priceTip
 		if showSession then
 			if item.kind == "item" and item.unitPrice then
-				priceText = self:FormatUnitAndLinePrice(item.unitPrice, item.count)
-				priceTip = L["AH_PRICE_TIP"]
+				priceText = self:FormatMoney(item.unitPrice * count)
+				local unitPriceText = self:FormatMoney(item.unitPrice)
+				if unitPriceText then
+					priceTip = L["AH_PRICE_TIP"]:format(unitPriceText)
+				end
 			elseif item.kind == "total" and item.sessionValue then
 				priceText = self:FormatMoney(item.sessionValue)
 				priceTip = L["AH_SESSION_TOTAL_TIP"]
