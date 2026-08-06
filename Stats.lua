@@ -682,5 +682,8 @@ end
 
 function FishStat:ResetSession()
 	wipe(self.session)
+	if self.inventoryValueExcluded then
+		wipe(self.inventoryValueExcluded)
+	end
 	self:RefreshUI()
 end

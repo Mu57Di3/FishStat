@@ -251,11 +251,30 @@ function FishStat:InitUI()
 
 	local applyBtn = CreateFrame("Button", "FishStatApplyBaitButton", baitPanel, "SecureActionButtonTemplate,UIPanelButtonTemplate")
 	applyBtn:SetSize(110, 24)
-	applyBtn:SetPoint("BOTTOMLEFT", 0, 4)
+	-- Align with valueInventoryBtn on body (same bottom inset)
+	applyBtn:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 4, 2)
 	applyBtn:SetText(L["APPLY"])
 	applyBtn:RegisterForClicks("AnyUp", "AnyDown")
 	applyBtn:Disable()
 	frame.applyBaitBtn = applyBtn
+
+	-- Inventory valuation (Auctionator) — bottom-right of body
+	local valueBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
+	valueBtn:SetSize(150, 24)
+	valueBtn:SetPoint("BOTTOMRIGHT", -22, 2)
+	valueBtn:SetText(L["VALUE_INVENTORY"])
+	valueBtn:SetFrameLevel(body:GetFrameLevel() + 10)
+	valueBtn:Hide()
+	valueBtn:SetScript("OnClick", function()
+		FishStat:ShowInventoryValueWindow()
+	end)
+	valueBtn:SetScript("OnEnter", function(btn)
+		GameTooltip:SetOwner(btn, "ANCHOR_TOP")
+		GameTooltip:SetText(L["VALUE_INVENTORY_TIP"])
+		GameTooltip:Show()
+	end)
+	valueBtn:SetScript("OnLeave", GameTooltip_Hide)
+	frame.valueInventoryBtn = valueBtn
 
 	-- Bottom-right resize grip
 	local resize = CreateFrame("Button", nil, frame)
@@ -324,6 +343,7 @@ function FishStat:HideWindow(fromCombat)
 	if self.frame then
 		self.frame:Hide()
 	end
+	self:HideInventoryValueWindow()
 	if not fromCombat then
 		self.wantShowAfterCombat = false
 		self.wasShownBeforeCombat = false
@@ -569,6 +589,16 @@ function FishStat:RefreshUI()
 		return
 	end
 
+	local auctionatorReady = self:IsAuctionatorReady()
+	if frame.valueInventoryBtn then
+		if auctionatorReady then
+			frame.valueInventoryBtn:Show()
+		else
+			frame.valueInventoryBtn:Hide()
+		end
+	end
+	local footerHeight = auctionatorReady and SESSION_FOOTER_HEIGHT or 4
+
 	local tab = self:GetActiveTab()
 	setTabActive(frame.sessionBtn, tab == "session")
 	setTabActive(frame.totalBtn, tab == "total")
@@ -595,7 +625,7 @@ function FishStat:RefreshUI()
 		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, SESSION_FOOTER_HEIGHT)
 	else
 		frame.showAllCheck:Hide()
-		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, 4)
+		frame.scrollFrame:SetPoint("BOTTOMRIGHT", -26, footerHeight)
 	end
 
 	local list = self:GetCatchList(showSession)
