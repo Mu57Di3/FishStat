@@ -30,64 +30,64 @@ FishStat.fishingExpansionBySkillLineID = {
 	[FISHING_SKILL_LINES.MIDNIGHT] = "Midnight",
 }
 
--- Anchor maps are checked while walking from the current map to its parents.
--- Patch zones that are not children of their expansion continent are included
--- explicitly so that they do not fall through to Azeroth or an older continent.
+-- Якорные карты проверяются при подъёме от текущей карты к родителям.
+-- Зоны патчей, которые не являются детьми континента дополнения, заданы
+-- явно, чтобы они не попадали в Азерот или более старый континент.
 FishStat.fishingSkillLineByMapID = {
-	-- Midnight
-	[2537] = FISHING_SKILL_LINES.MIDNIGHT, -- Midnight
-	[2424] = FISHING_SKILL_LINES.MIDNIGHT, -- Isle of Quel'Danas
-	[2395] = FISHING_SKILL_LINES.MIDNIGHT, -- Eversong Woods
-	[2437] = FISHING_SKILL_LINES.MIDNIGHT, -- Zul'Aman
-	[2413] = FISHING_SKILL_LINES.MIDNIGHT, -- Harandar
-	[2405] = FISHING_SKILL_LINES.MIDNIGHT, -- Voidstorm
+	-- Полночь
+	[2537] = FISHING_SKILL_LINES.MIDNIGHT, -- Полночь
+	[2424] = FISHING_SKILL_LINES.MIDNIGHT, -- Остров Кель'Данас
+	[2395] = FISHING_SKILL_LINES.MIDNIGHT, -- Леса Вечной Песни
+	[2437] = FISHING_SKILL_LINES.MIDNIGHT, -- Зул'Аман
+	[2413] = FISHING_SKILL_LINES.MIDNIGHT, -- Харандар
+	[2405] = FISHING_SKILL_LINES.MIDNIGHT, -- Буря Бездны
 
-	-- The War Within
-	[2274] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- Khaz Algar
-	[2346] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- Undermine
-	[2371] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- K'aresh
+	-- Война внутри
+	[2274] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- Каз Алгар
+	[2346] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- Нижняя Шахта
+	[2371] = FISHING_SKILL_LINES.KHAZ_ALGAR, -- К'ареш
 
-	-- Dragonflight
-	[1978] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Dragon Isles
-	[2133] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Zaralek Cavern
-	[2200] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Emerald Dream
+	-- Драконы
+	[1978] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Драконьи острова
+	[2133] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Пещера Заралек
+	[2200] = FISHING_SKILL_LINES.DRAGONFLIGHT, -- Изумрудный Сон
 
-	-- Shadowlands
-	[1550] = FISHING_SKILL_LINES.SHADOWLANDS, -- Shadowlands
-	[1970] = FISHING_SKILL_LINES.SHADOWLANDS, -- Zereth Mortis
+	-- Темные Земли
+	[1550] = FISHING_SKILL_LINES.SHADOWLANDS, -- Темные Земли
+	[1970] = FISHING_SKILL_LINES.SHADOWLANDS, -- Зерет Мортис
 
-	-- Battle for Azeroth
-	[875] = FISHING_SKILL_LINES.BFA, -- Zandalar
-	[876] = FISHING_SKILL_LINES.BFA, -- Kul Tiras
-	[1355] = FISHING_SKILL_LINES.BFA, -- Nazjatar
-	[1462] = FISHING_SKILL_LINES.BFA, -- Mechagon Island
+	-- Битва за Азерот
+	[875] = FISHING_SKILL_LINES.BFA, -- Зандалар
+	[876] = FISHING_SKILL_LINES.BFA, -- Кул-Тирас
+	[1355] = FISHING_SKILL_LINES.BFA, -- Назжатар
+	[1462] = FISHING_SKILL_LINES.BFA, -- Остров Мехагон
 
-	-- Legion
-	[619] = FISHING_SKILL_LINES.LEGION, -- Broken Isles
-	[905] = FISHING_SKILL_LINES.LEGION, -- Argus
+	-- Легион
+	[619] = FISHING_SKILL_LINES.LEGION, -- Расколотые острова
+	[905] = FISHING_SKILL_LINES.LEGION, -- Аргус
 
-	-- Warlords of Draenor
-	[572] = FISHING_SKILL_LINES.DRAENOR, -- Draenor
+	-- Дренор
+	[572] = FISHING_SKILL_LINES.DRAENOR, -- Дренор
 
-	-- Mists of Pandaria
-	[424] = FISHING_SKILL_LINES.PANDARIA, -- Pandaria
+	-- Пандария
+	[424] = FISHING_SKILL_LINES.PANDARIA, -- Пандария
 
-	-- Cataclysm zones must be checked before Kalimdor/Eastern Kingdoms.
-	[948] = FISHING_SKILL_LINES.CATACLYSM, -- The Maelstrom
-	[198] = FISHING_SKILL_LINES.CATACLYSM, -- Mount Hyjal
-	[203] = FISHING_SKILL_LINES.CATACLYSM, -- Vashj'ir
-	[201] = FISHING_SKILL_LINES.CATACLYSM, -- Kelp'thar Forest
-	[204] = FISHING_SKILL_LINES.CATACLYSM, -- Abyssal Depths
-	[205] = FISHING_SKILL_LINES.CATACLYSM, -- Shimmering Expanse
-	[207] = FISHING_SKILL_LINES.CATACLYSM, -- Deepholm
-	[241] = FISHING_SKILL_LINES.CATACLYSM, -- Twilight Highlands
-	[249] = FISHING_SKILL_LINES.CATACLYSM, -- Uldum
-	[244] = FISHING_SKILL_LINES.CATACLYSM, -- Tol Barad
-	[245] = FISHING_SKILL_LINES.CATACLYSM, -- Tol Barad Peninsula
+	-- Зоны Катаклизма нужно проверять раньше Калимдора и Восточных королевств.
+	[948] = FISHING_SKILL_LINES.CATACLYSM, -- Водоворот
+	[198] = FISHING_SKILL_LINES.CATACLYSM, -- Гора Хиджал
+	[203] = FISHING_SKILL_LINES.CATACLYSM, -- Вайш'ир
+	[201] = FISHING_SKILL_LINES.CATACLYSM, -- Лес Келп'тар
+	[204] = FISHING_SKILL_LINES.CATACLYSM, -- Бездонные глубины
+	[205] = FISHING_SKILL_LINES.CATACLYSM, -- Мерцающий простор
+	[207] = FISHING_SKILL_LINES.CATACLYSM, -- Подземье
+	[241] = FISHING_SKILL_LINES.CATACLYSM, -- Сумеречное нагорье
+	[249] = FISHING_SKILL_LINES.CATACLYSM, -- Ульдум
+	[244] = FISHING_SKILL_LINES.CATACLYSM, -- Тол Барад
+	[245] = FISHING_SKILL_LINES.CATACLYSM, -- Полуостров Тол Барад
 
-	-- Wrath of the Lich King / The Burning Crusade / Classic
-	[113] = FISHING_SKILL_LINES.NORTHREND, -- Northrend
-	[101] = FISHING_SKILL_LINES.OUTLAND, -- Outland
-	[12] = FISHING_SKILL_LINES.CLASSIC, -- Kalimdor
-	[13] = FISHING_SKILL_LINES.CLASSIC, -- Eastern Kingdoms
+	-- Гнев Короля-лича / The Burning Crusade / Классика
+	[113] = FISHING_SKILL_LINES.NORTHREND, -- Нордскол
+	[101] = FISHING_SKILL_LINES.OUTLAND, -- Запределье
+	[12] = FISHING_SKILL_LINES.CLASSIC, -- Калимдор
+	[13] = FISHING_SKILL_LINES.CLASSIC, -- Восточные королевства
 }
