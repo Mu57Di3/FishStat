@@ -3,7 +3,7 @@ _G.FishStat = FishStat
 
 local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 
--- Per-character saved data (window, minimap, total catches)
+-- Сохранённые данные персонажа (окно, миникарта, общий улов)
 local defaults = {
 	char = {
 		minimap = {
@@ -26,9 +26,11 @@ local defaults = {
 	},
 }
 
+--- Переносит устаревшие настройки окна в текущий формат.
+-- Преобразует булево `showSession` в `activeTab` и задаёт вкладку по умолчанию.
 function FishStat:MigrateWindowSettings()
 	local w = self.db.char.window
-	-- Legacy boolean showSession → activeTab
+	-- Устаревший булевый флаг showSession → activeTab
 	if w.showSession ~= nil then
 		w.activeTab = w.showSession and "session" or "total"
 		w.showSession = nil
@@ -38,15 +40,20 @@ function FishStat:MigrateWindowSettings()
 	end
 end
 
+--- Возвращает идентификатор активной вкладки главного окна.
+-- @return string `"session"`, `"total"` или `"bait"`
 function FishStat:GetActiveTab()
 	return self.db.char.window.activeTab or "session"
 end
 
+--- Переключает активную вкладку главного окна и обновляет интерфейс.
+-- @param tab string идентификатор вкладки: `"session"`, `"total"` или `"bait"`
 function FishStat:SetActiveTab(tab)
 	self.db.char.window.activeTab = tab
 	self:RefreshUI()
 end
 
+--- Инициализация аддона: база данных, состояние сессии и слэш-команда.
 function FishStat:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("FishStatDB", defaults, true)
 	self:MigrateWindowSettings()
@@ -62,8 +69,9 @@ function FishStat:OnInitialize()
 	self:RegisterChatCommand("fishstat", "SlashCommand")
 end
 
+--- Регистрирует игровые события и создаёт интерфейс после включения аддона.
 function FishStat:OnEnable()
-	-- LOOT_READY fires before autoloot empties slots (Shift+RMB / autoLootDefault)
+	-- LOOT_READY срабатывает до того, как автолут опустошит слоты (Shift+ПКМ / autoLootDefault)
 	self:RegisterEvent("LOOT_READY")
 	self:RegisterEvent("LOOT_OPENED")
 	self:RegisterEvent("LOOT_CLOSED")
@@ -79,11 +87,21 @@ function FishStat:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagsChanged")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
+	self:RegisterEvent("TOOLTIP_DATA_UPDATE")
+	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+	self:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	self:RegisterEvent("PROFESSION_EQUIPMENT_CHANGED")
+	self:RegisterEvent("GOSSIP_CLOSED", "OnVenomSiphoned")
+	self:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", "OnVenomSiphoned")
+	self:RegisterEvent("CHAT_MSG_CURRENCY", "OnVenomSiphoned")
 
 	self:InitUI()
 	self:InitMinimap()
 end
 
+--- Обрабатывает слэш-команду `/fishstat`.
+-- Без аргумента переключает окно; `reset` сбрасывает сессию; `minimap` скрывает или показывает кнопку у миникарты.
+-- @param input string|nil текст после команды
 function FishStat:SlashCommand(input)
 	input = strtrim(input or ""):lower()
 	if input == "" then
@@ -99,43 +117,54 @@ function FishStat:SlashCommand(input)
 	end
 end
 
+--- Обработчик `LOOT_READY`: учитывает рыболовный лут до автолута.
 function FishStat:LOOT_READY()
 	self:ProcessFishingLoot()
 end
 
+--- Обработчик `LOOT_OPENED`: учитывает рыболовный лут при открытии окна добычи.
 function FishStat:LOOT_OPENED()
 	self:ProcessFishingLoot()
 end
 
+--- Обработчик `LOOT_CLOSED`: сбрасывает флаг обработки и оставляет окно для чат-лута.
 function FishStat:LOOT_CLOSED()
 	self.lootHandled = false
-	-- CHAT_MSG_LOOT can arrive after LOOT_CLOSED when autolooting
+	-- При автолуте CHAT_MSG_LOOT может прийти уже после LOOT_CLOSED
 	if self.expectFishingChat then
 		self.expectFishingChatUntil = GetTime() + 1.5
 	end
 end
 
+--- Обработчик `CHAT_MSG_LOOT`: запасной разбор добычи из чата при автолуте.
+-- @param _ string имя события (не используется)
+-- @param message string текст сообщения о добыче
 function FishStat:CHAT_MSG_LOOT(_, message)
 	self:ProcessFishingChatLoot(message)
 end
 
+--- Обновляет интерфейс при смене зоны или подзоны.
 function FishStat:OnZoneChanged()
 	self:RefreshUI()
 end
 
+--- Обновляет интерфейс при изменении навыков или экипировки.
 function FishStat:OnSkillChanged()
 	self:RefreshUI()
 end
 
+--- Обновляет интерфейс при открытии окна профессии.
 function FishStat:OnTradeSkillShow()
 	self:RefreshUI()
 end
 
+--- После входа в мир сканирует сумки и обновляет интерфейс.
 function FishStat:OnPlayerEnteringWorld()
 	self:OnBagsChanged()
 	self:RefreshUI()
 end
 
+--- Скрывает окно при входе в бой и запоминает, нужно ли вернуть его после боя.
 function FishStat:PLAYER_REGEN_DISABLED()
 	self:UpdateBaitSecureButton()
 	if self:IsWindowShown() then
@@ -146,6 +175,7 @@ function FishStat:PLAYER_REGEN_DISABLED()
 	end
 end
 
+--- После выхода из боя восстанавливает окно и кнопку применения наживки.
 function FishStat:PLAYER_REGEN_ENABLED()
 	self:UpdateBaitSecureButton()
 	if self.wasShownBeforeCombat or self.wantShowAfterCombat then
@@ -155,6 +185,7 @@ function FishStat:PLAYER_REGEN_ENABLED()
 	end
 end
 
+--- Показывает или скрывает главное окно. В бою показ откладывается.
 function FishStat:ToggleWindow()
 	if self:IsWindowShown() then
 		self:HideWindow()

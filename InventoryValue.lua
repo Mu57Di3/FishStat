@@ -10,6 +10,12 @@ local INV_VALUE_NAME_RIGHT = -220
 
 local QUALITY_COLORS = _G.ITEM_QUALITY_COLORS
 
+--- Возвращает цвет качества предмета из `ITEM_QUALITY_COLORS`.
+-- @param quality number|nil качество предмета
+-- @return number r
+-- @return number g
+-- @return number b
+-- @local
 local function qualityColor(quality)
 	local c = QUALITY_COLORS and QUALITY_COLORS[quality or 1]
 	if c then
@@ -18,6 +24,11 @@ local function qualityColor(quality)
 	return 1, 1, 1
 end
 
+--- Возвращает или создаёт строку списка оценки инвентаря по индексу.
+-- @param frame Frame окно оценки инвентаря
+-- @param index number индекс строки (с 1)
+-- @return Button строка списка
+-- @local
 local function acquireInvValueRow(frame, index)
 	local row = frame.rows[index]
 	if row then
@@ -90,6 +101,7 @@ local function acquireInvValueRow(frame, index)
 	return row
 end
 
+--- Создаёт окно оценки кулинарных ингредиентов в сумках.
 function FishStat:InitInventoryValueUI()
 	if self.inventoryValueFrame then
 		return
@@ -205,6 +217,8 @@ function FishStat:InitInventoryValueUI()
 	self.inventoryValueFrame = frame
 end
 
+--- Перерисовывает список предметов и итоговую сумму в окне оценки инвентаря.
+-- @param result table|nil результат `ScanInventoryFishValue` (`items`, `totalValue`)
 function FishStat:RefreshInventoryValueUI(result)
 	local frame = self.inventoryValueFrame
 	if not frame then
@@ -270,6 +284,12 @@ function FishStat:RefreshInventoryValueUI(result)
 	frame.content:SetHeight(math.max(#list * ROW_HEIGHT, 1))
 end
 
+--- Исключает из результата оценки предметы, помеченные пользователем.
+-- Пересчитывает `items` и `totalValue` на месте.
+-- @param result table|nil результат сканирования
+-- @param excluded table|nil множество `[itemID] = true`
+-- @return table|nil отфильтрованный результат
+-- @local
 local function filterExcludedItems(result, excluded)
 	if not result or type(result.items) ~= "table" or not excluded then
 		return result
@@ -281,7 +301,7 @@ local function filterExcludedItems(result, excluded)
 	for i = 1, #items do
 		local item = items[i]
 		if item.itemID and excluded[item.itemID] then
-			-- skip
+			-- пропускаем
 		else
 			filtered[#filtered + 1] = item
 			totalValue = totalValue + (item.lineValue or 0)
@@ -292,6 +312,8 @@ local function filterExcludedItems(result, excluded)
 	return result
 end
 
+--- Исключает предмет из текущей оценки инвентаря до сброса сессии.
+-- @param itemID number|nil ID предмета
 function FishStat:ExcludeInventoryValueItem(itemID)
 	local result = self.inventoryValueResult
 	if not result or not itemID or type(result.items) ~= "table" then
@@ -316,6 +338,7 @@ function FishStat:ExcludeInventoryValueItem(itemID)
 	self:RefreshInventoryValueUI(result)
 end
 
+--- Сканирует сумки, фильтрует исключённые предметы и показывает окно оценки.
 function FishStat:ShowInventoryValueWindow()
 	if not self:IsAuctionatorReady() then
 		return
@@ -328,6 +351,7 @@ function FishStat:ShowInventoryValueWindow()
 	self.inventoryValueFrame:Raise()
 end
 
+--- Скрывает окно оценки инвентаря и сбрасывает текущий результат.
 function FishStat:HideInventoryValueWindow()
 	if self.inventoryValueFrame then
 		self.inventoryValueFrame:Hide()

@@ -4,6 +4,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 local LibDBIcon = LibStub("LibDBIcon-1.0")
 local LDB = LibStub("LibDataBroker-1.1")
 
+--- Создаёт кнопку у миникарты через LibDataBroker и LibDBIcon.
 function FishStat:InitMinimap()
 	if self.minimapReady then
 		return
@@ -32,6 +33,7 @@ function FishStat:InitMinimap()
 	self:UpdateMinimapVisibility()
 end
 
+--- Показывает или скрывает кнопку у миникарты согласно настройке персонажа.
 function FishStat:UpdateMinimapVisibility()
 	if not self.minimapReady then
 		return
@@ -43,6 +45,8 @@ function FishStat:UpdateMinimapVisibility()
 	end
 end
 
+--- Показывает или скрывает контекстное меню кнопки у миникарты.
+-- @param anchor Frame фрейм-якорь (обычно кнопка миникарты)
 function FishStat:ShowMinimapMenu(anchor)
 	if self.minimapMenu then
 		self.minimapMenu:Hide()
@@ -63,6 +67,11 @@ function FishStat:ShowMinimapMenu(anchor)
 	})
 	menu:SetBackdropColor(0.05, 0.08, 0.12, 0.95)
 
+	--- Создаёт пункт контекстного меню миникарты.
+	-- @param text string подпись пункта
+	-- @param onClick function обработчик нажатия
+	-- @return Button созданная кнопка
+	-- @local
 	local function addOption(text, onClick)
 		local btn = CreateFrame("Button", nil, menu)
 		btn:SetHeight(22)
@@ -101,7 +110,7 @@ function FishStat:ShowMinimapMenu(anchor)
 		FishStat.minimapMenu = nil
 	end)
 
-	-- Close on outside click
+	-- Закрытие по клику вне меню
 	menu:EnableMouse(true)
 	menu:SetScript("OnUpdate", function(selfMenu, elapsed)
 		selfMenu.elapsed = (selfMenu.elapsed or 0) + elapsed

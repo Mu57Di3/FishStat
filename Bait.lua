@@ -6,6 +6,10 @@ local TEEP_NEEDLES = {
 	["enUS"] = {"fishing", "throw", "perception", "fishing lure", "lure to your fishing", "attach", "bait", "lure"},
 }
 
+--- Возвращает количество предмета в сумках персонажа (без банка).
+-- @param itemID number ID предмета
+-- @return number количество
+-- @local
 local function getItemCount(itemID)
 	if C_Item and C_Item.GetItemCount then
 		return C_Item.GetItemCount(itemID, false, false) or 0
@@ -13,6 +17,10 @@ local function getItemCount(itemID)
 	return GetItemCount(itemID, false, false) or 0
 end
 
+--- Возвращает локализованное имя предмета по ID.
+-- @param itemID number ID предмета
+-- @return string|nil имя предмета
+-- @local
 local function getItemName(itemID)
 	if C_Item and C_Item.GetItemNameByID then
 		local n = C_Item.GetItemNameByID(itemID)
@@ -23,6 +31,10 @@ local function getItemName(itemID)
 	return GetItemInfo(itemID)
 end
 
+--- Возвращает путь или FileDataID иконки предмета.
+-- @param itemID number ID предмета
+-- @return string|number|nil текстура иконки
+-- @local
 local function getItemIcon(itemID)
 	if C_Item and C_Item.GetItemIconByID then
 		return C_Item.GetItemIconByID(itemID)
@@ -30,6 +42,10 @@ local function getItemIcon(itemID)
 	return select(10, GetItemInfo(itemID))
 end
 
+--- Возвращает заклинание, связанное с предметом (имя или ID).
+-- @param itemID number ID предмета
+-- @return string|number|nil имя или ID заклинания
+-- @local
 local function getItemSpell(itemID)
 	if C_Item and C_Item.GetItemSpell then
 		local spellID, spellName = C_Item.GetItemSpell(itemID)
@@ -41,6 +57,10 @@ local function getItemSpell(itemID)
 	return nil
 end
 
+--- Собирает текст всех строк подсказки предмета в одну строку.
+-- @param itemID number ID предмета
+-- @return string|nil текст подсказки
+-- @local
 local function getTooltipText(itemID)
 	if not C_TooltipInfo or not C_TooltipInfo.GetItemByID then
 		return nil
@@ -70,6 +90,10 @@ local function getTooltipText(itemID)
 end
 
 
+--- Проверяет по тексту подсказки, похож ли предмет на рыболовную наживку или приманку.
+-- @param itemID number ID предмета
+-- @return boolean true, если найдены характерные ключевые слова
+-- @local
 local function tooltipLooksLikeFishingBait(itemID)
 	local locale = GetLocale();
 	local name = getItemName(itemID);
@@ -87,6 +111,10 @@ local function tooltipLooksLikeFishingBait(itemID)
 	return false
 end
 
+--- Проверяет, является ли предмет рецептом (по локализованному слову «рецепт»).
+-- @param itemID number ID предмета
+-- @return number|nil позиция совпадения или nil
+-- @local
 local function isRecipe(itemID)
 	local name = getItemName(itemID)
 	local lower = string.lower(name);
@@ -94,7 +122,11 @@ local function isRecipe(itemID)
 	return lower:find(L["RECIPE"], 1, true)
 end
 
---- Only fishing-related baits/lures/throw-back fish
+--- Проверяет, является ли предмет рыболовной наживкой, приманкой или рыбой для насадки.
+-- Рецепты исключаются.
+-- @param itemID number|nil ID предмета
+-- @param name string|nil имя предмета (зарезервировано, не используется)
+-- @return boolean
 function FishStat:IsBaitItem(itemID, name)
 	if not itemID then
 		return false
@@ -103,6 +135,8 @@ function FishStat:IsBaitItem(itemID, name)
 	return tooltipLooksLikeFishingBait(itemID) and not isRecipe(itemID)
 end
 
+--- Сканирует сумки на рыболовные наживки и сохраняет список в `self.baitList`.
+-- @return table список найденных наживок `{itemID, name, count, texture}`
 function FishStat:ScanBaits()
 	local found = {}
 	local seen = {}
@@ -162,6 +196,8 @@ function FishStat:ScanBaits()
 	return found
 end
 
+--- Возвращает выбранную наживку из текущего списка, если она ещё есть в сумках.
+-- @return table|nil запись наживки или nil
 function FishStat:GetSelectedBait()
 	local id = self.db.char.selectedBait
 	if not id or not self.baitList then
@@ -175,12 +211,16 @@ function FishStat:GetSelectedBait()
 	return nil
 end
 
+--- Запоминает выбранную наживку и обновляет кнопку применения и список.
+-- @param itemID number|nil ID предмета наживки
 function FishStat:SelectBait(itemID)
 	self.db.char.selectedBait = itemID
 	self:UpdateBaitSecureButton()
 	self:RefreshBaitUI()
 end
 
+--- Настраивает защищённую кнопку применения выбранной наживки.
+-- В бою кнопка отключается, так как атрибуты SecureActionButton нельзя менять.
 function FishStat:UpdateBaitSecureButton()
 	local frame = self.frame
 	if not frame or not frame.applyBaitBtn then
@@ -211,7 +251,9 @@ function FishStat:UpdateBaitSecureButton()
 	btn:SetAttribute("macrotext", nil)
 end
 
+--- Обработчик изменения сумок: пересканирует яд и, при открытой вкладке наживок, список приманок.
 function FishStat:OnBagsChanged()
+	self:ScheduleVenomRescan()
 	if self.frame and self.frame:IsShown() and self:GetActiveTab() == "bait" then
 		self:ScanBaits()
 		self:RefreshBaitUI()

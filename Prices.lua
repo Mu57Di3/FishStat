@@ -3,6 +3,8 @@ local FishStat = LibStub("AceAddon-3.0"):GetAddon("FishStat")
 local BIND_ON_ACQUIRE = (Enum and Enum.ItemBind and Enum.ItemBind.OnAcquire) or 1
 local BIND_QUEST = (Enum and Enum.ItemBind and Enum.ItemBind.Quest) or 4
 
+--- Проверяет, загружен ли Auctionator и доступен ли API цен.
+-- @return boolean
 function FishStat:IsAuctionatorReady()
 	if C_AddOns and C_AddOns.IsAddOnLoaded then
 		if not C_AddOns.IsAddOnLoaded("Auctionator") then
@@ -18,6 +20,9 @@ function FishStat:IsAuctionatorReady()
 		and type(Auctionator.API.v1.GetAuctionPriceByItemID) == "function"
 end
 
+--- Возвращает тип привязки предмета (`Enum.ItemBind`) или nil, если данные ещё не в кэше.
+-- @param itemID number|nil ID предмета
+-- @return number|nil тип привязки
 function FishStat:GetItemBindType(itemID)
 	if not itemID then
 		return nil
@@ -32,8 +37,12 @@ function FishStat:GetItemBindType(itemID)
 	return bindType
 end
 
---- Junk, BoP and quest-bound items are not valued for AH.
---- Unknown bindType (item info not cached) → not priced yet.
+--- Проверяет, можно ли оценивать предмет по аукциону.
+-- Серый хлам, персональные (BoP) и квестовые предметы не оцениваются.
+-- Неизвестный `bindType` (данные предмета ещё не в кэше) тоже исключается.
+-- @param quality number|nil качество предмета
+-- @param bindType number|nil тип привязки
+-- @return boolean
 function FishStat:IsPricableItem(quality, bindType)
 	if (quality or 1) == 0 then
 		return false
@@ -47,6 +56,9 @@ function FishStat:IsPricableItem(quality, bindType)
 	return true
 end
 
+--- Возвращает цену за штуку по данным Auctionator.
+-- @param itemID number|nil ID предмета
+-- @return number|nil цена в медных монетах или nil
 function FishStat:GetUnitAuctionPrice(itemID)
 	if not itemID or not self:IsAuctionatorReady() then
 		return nil
@@ -59,6 +71,9 @@ function FishStat:GetUnitAuctionPrice(itemID)
 	return price
 end
 
+--- Форматирует сумму меди в строку с иконками монет.
+-- @param copper number|nil сумма в медных монетах
+-- @return string|nil отформатированная строка или nil при нуле и меньше
 function FishStat:FormatMoney(copper)
 	if not copper or copper <= 0 then
 		return nil
@@ -72,7 +87,9 @@ function FishStat:FormatMoney(copper)
 	return tostring(copper)
 end
 
---- Build a set of itemIDs ever recorded in total catch history.
+--- Собирает множество ID предметов, когда-либо попавших в общую историю улова.
+-- @return table множество `[itemID] = true`
+-- @return table метаданные предметов `[itemID] = {name, link, quality, texture}`
 function FishStat:CollectKnownCatchItemIDs()
 	local known = {}
 	local meta = {}
@@ -102,9 +119,13 @@ function FishStat:CollectKnownCatchItemIDs()
 end
 
 local ITEM_CLASS_TRADEGOODS = (Enum and Enum.ItemClass and Enum.ItemClass.Tradegoods) or 7
--- Tradegoods subclass: Cooking (meat, fish, and other cooking reagents)
+-- Подкласс хозяйственных товаров: кулинария (мясо, рыба и прочие ингредиенты)
 local ITEM_SUBCLASS_COOKING = 8
 
+--- Возвращает количество предмета в сумках персонажа (без банка).
+-- @param itemID number ID предмета
+-- @return number количество
+-- @local
 local function getBagItemCount(itemID)
 	if C_Item and C_Item.GetItemCount then
 		return C_Item.GetItemCount(itemID, false, false) or 0
@@ -115,6 +136,9 @@ local function getBagItemCount(itemID)
 	return 0
 end
 
+--- Возвращает индекс последней сумки, включая сумку реагентов.
+-- @return number индекс последней сумки
+-- @local
 local function getLastBagIndex()
 	if Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumBagSlots then
 		return Constants.InventoryConstants.NumBagSlots + 1
@@ -124,7 +148,9 @@ local function getLastBagIndex()
 	return 5
 end
 
---- True if item is a cooking reagent (Tradegoods / Cooking).
+--- Проверяет, является ли предмет ингредиентом кулинарии (Хозяйственные товары / Кулинария).
+-- @param itemID number|nil ID предмета
+-- @return boolean
 function FishStat:IsCookingIngredient(itemID)
 	if not itemID then
 		return false
@@ -150,8 +176,8 @@ function FishStat:IsCookingIngredient(itemID)
 	return classID == ITEM_CLASS_TRADEGOODS and subclassID == ITEM_SUBCLASS_COOKING
 end
 
---- Scan bags for cooking ingredients from catch history; value via Auctionator.
---- Returns { items = { {itemID, name, link, quality, texture, count, unitPrice, lineValue}, ... }, totalValue = copper }.
+--- Сканирует сумки на кулинарные ингредиенты из истории улова и оценивает их через Auctionator.
+-- @return table `{ items = { {itemID, name, link, quality, texture, count, unitPrice, lineValue}, ... }, totalValue = copper }`
 function FishStat:ScanInventoryFishValue()
 	local known, meta = self:CollectKnownCatchItemIDs()
 	local aggregated = {}

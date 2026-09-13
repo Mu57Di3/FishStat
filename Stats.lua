@@ -4,12 +4,20 @@ local L = LibStub("AceLocale-3.0"):GetLocale("FishStat")
 local KEY_SEP = "\0"
 local MAX_MAP_PARENT_DEPTH = 20
 
+--- Формирует ключ локации из зоны и подзоны.
+-- @param zone string|nil название зоны (по умолчанию текущая)
+-- @param subzone string|nil название подзоны (по умолчанию текущая)
+-- @return string ключ `"зона\\0подзона"`
 function FishStat:GetLocationKey(zone, subzone)
 	zone = zone or GetZoneText() or ""
 	subzone = subzone or GetSubZoneText() or ""
 	return zone .. KEY_SEP .. subzone
 end
 
+--- Формирует отображаемое имя локации (зона или зона + подзона).
+-- @param zone string|nil название зоны (по умолчанию текущая)
+-- @param subzone string|nil название подзоны (по умолчанию текущая)
+-- @return string локализованная подпись
 function FishStat:GetLocationDisplayName(zone, subzone)
 	zone = zone or GetZoneText() or ""
 	subzone = subzone or GetSubZoneText() or ""
@@ -19,6 +27,8 @@ function FishStat:GetLocationDisplayName(zone, subzone)
 	return L["ZONE_ONLY"]:format(zone)
 end
 
+--- Гарантирует наличие таблицы кэша навыка рыбной ловли в SavedVariables.
+-- @return table|nil кэш `[skillLineID] = info`
 function FishStat:EnsureFishingSkillCache()
 	local char = self.db and self.db.char
 	if not char then
@@ -30,15 +40,21 @@ function FishStat:EnsureFishingSkillCache()
 	return char.fishingSkillCache
 end
 
+--- Возвращает закэшированные данные навыка рыбной ловли по ID линии навыка.
+-- @param skillLineID number|string|nil ID линии навыка
+-- @return table|nil запись кэша
 function FishStat:GetCachedFishingSkillInfo(skillLineID)
 	local cache = self:EnsureFishingSkillCache()
 	if not cache or not skillLineID then
 		return nil
 	end
-	-- SavedVariables may stringify numeric keys across sessions.
+	-- SavedVariables может превратить числовые ключи в строки между сессиями.
 	return cache[skillLineID] or cache[tostring(skillLineID)]
 end
 
+--- Сохраняет данные навыка рыбной ловли в кэш персонажа.
+-- @param skillLineID number|nil ID линии навыка
+-- @param info table|nil данные навыка (`name`, `skillLevel`, `maxSkillLevel`, ...)
 function FishStat:CacheFishingSkillInfo(skillLineID, info)
 	if not skillLineID or not info then
 		return
@@ -61,12 +77,17 @@ function FishStat:CacheFishingSkillInfo(skillLineID, info)
 		skillLineID = skillLineID,
 		expansionName = info.expansionName,
 	}
-	-- Drop legacy numeric-key entry if present.
+	-- Удаляем устаревшую запись с числовым ключом, если она есть.
 	if cache[skillLineID] and type(skillLineID) == "number" then
 		cache[skillLineID] = nil
 	end
 end
 
+--- Сравнивает названия навыков с учётом склонений и сокращённых форм.
+-- @param a string|nil первое название
+-- @param b string|nil второе название
+-- @return boolean
+-- @local
 local function skillNamesMatch(a, b)
 	if not a or not b then
 		return false
@@ -79,15 +100,20 @@ local function skillNamesMatch(a, b)
 	if a == b then
 		return true
 	end
-	-- "Классическая рыбная ловля" vs "Рыбная ловля"
+	-- «Классическая рыбная ловля» и «Рыбная ловля»
 	if strfind(a, b, 1, true) or strfind(b, a, 1, true) then
 		return true
 	end
-	-- Declined forms (ruRU |3-6(%s)|) share a short byte-prefix.
+	-- Склонённые формы (ruRU |3-6(%s)|) имеют общий короткий байтовый префикс.
 	local prefixLen = 8
 	return #a >= prefixLen and #b >= prefixLen and strsub(a, 1, prefixLen) == strsub(b, 1, prefixLen)
 end
 
+--- Проверяет, похож ли новый уровень на обычный прирост навыка, а не на скачок другой профессии.
+-- @param entry table|nil запись кэша навыка
+-- @param newLevel number новый уровень
+-- @return boolean
+-- @local
 local function isPlausibleSkillUp(entry, newLevel)
 	if not entry then
 		return false
@@ -96,7 +122,7 @@ local function isPlausibleSkillUp(entry, newLevel)
 	if newLevel <= current then
 		return false
 	end
-	-- Skill-ups are small steps; reject unrelated profession jumps.
+	-- Повышения навыка идут небольшими шагами; скачки другой профессии отбрасываем.
 	if newLevel - current > 10 then
 		return false
 	end
@@ -107,10 +133,14 @@ local function isPlausibleSkillUp(entry, newLevel)
 	return true
 end
 
+--- Строит lua-паттерн из глобальной строки `ERR_SKILL_UP_SI`.
+-- @param template string шаблон с `%s` и `%d`
+-- @return string паттерн для `string.match`
+-- @local
 local function buildSkillUpPattern(template)
-	-- ruRU: "|3-6(%s) повышается до %d." — chat text has declined name, not |3-6(...).
+	-- ruRU: "|3-6(%s) повышается до %d." — в чате уже склонённое имя, без |3-6(...).
 	template = template:gsub("|%d+%-%d+%((.-)%)", "%1")
-	-- Chat lines often omit the trailing period from the global string.
+	-- Строки чата часто без точки в конце, в отличие от глобальной строки.
 	template = template:gsub("[%s%.]+$", "")
 	local markS, markD = "\001", "\002"
 	template = template:gsub("%%s", markS):gsub("%%d", markD)
@@ -119,6 +149,11 @@ local function buildSkillUpPattern(template)
 	return "^" .. template .. "%s*%.?$"
 end
 
+--- Разбирает сообщение чата о повышении навыка.
+-- @param message string текст `CHAT_MSG_SKILL`
+-- @return string|nil имя навыка
+-- @return string|nil новый уровень
+-- @local
 local function parseSkillUpMessage(message)
 	message = strtrim(message)
 	message = message:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
@@ -139,7 +174,7 @@ local function parseSkillUpMessage(message)
 		end
 	end
 
-	-- Locale-independent fallbacks (period optional).
+	-- Запасные шаблоны без привязки к локали (точка в конце необязательна).
 	local skillName, levelStr = message:match("^(.+)%s+повышается до%s+(%d+)%s*%.?$")
 	if skillName then
 		return skillName, levelStr
@@ -152,6 +187,10 @@ local function parseSkillUpMessage(message)
 	return nil, nil
 end
 
+--- Проверяет, относится ли имя навыка из чата к рыбной ловле.
+-- @param skillName string|nil имя навыка
+-- @return boolean
+-- @local
 local function isFishingSkillUpName(skillName)
 	if not skillName then
 		return false
@@ -160,15 +199,17 @@ local function isFishingSkillUpName(skillName)
 		return true
 	end
 	local lower = strlower(skillName)
-	-- enUS / ruRU fishing tokens in expansion skill titles.
+	-- Маркеры рыбной ловли в названиях навыков дополнений (enUS / ruRU).
 	if strfind(lower, "fish", 1, true) or strfind(lower, "рыбн", 1, true) then
 		return true
 	end
 	return false
 end
 
--- When API levels are unavailable, skill-ups still arrive via CHAT_MSG_SKILL.
--- Bump the matching cached fishing skill line so the UI stays current.
+--- Обновляет кэш навыка рыбной ловли по сообщению о повышении, если API уровней недоступен.
+-- @param skillName string|nil имя навыка из чата
+-- @param newLevel number|string|nil новый уровень
+-- @return boolean true, если кэш обновлён
 function FishStat:UpdateFishingSkillCacheFromSkillUp(skillName, newLevel)
 	newLevel = tonumber(newLevel)
 	if not skillName or not newLevel or newLevel <= 0 then
@@ -183,12 +224,17 @@ function FishStat:UpdateFishingSkillCacheFromSkillUp(skillName, newLevel)
 		return false
 	end
 
+	--- Повышает уровень записи кэша, если прирост правдоподобен.
+	-- @param skillLineID number|string ID линии навыка
+	-- @param entry table запись кэша
+	-- @return boolean
+	-- @local
 	local function bump(skillLineID, entry)
 		if not entry or not isPlausibleSkillUp(entry, newLevel) then
 			return false
 		end
 		entry.skillLevel = newLevel
-		-- Prefer the fuller live skill-up title for later matching.
+		-- Для последующего сопоставления сохраняем более полное имя из чата.
 		if skillName and skillName ~= "" then
 			entry.name = skillName
 		end
@@ -214,6 +260,9 @@ function FishStat:UpdateFishingSkillCacheFromSkillUp(skillName, newLevel)
 	return false
 end
 
+--- Обработчик `CHAT_MSG_SKILL`: обновляет кэш рыбной ловли и интерфейс.
+-- @param _ string имя события (не используется)
+-- @param message string текст сообщения
 function FishStat:OnChatMsgSkill(_, message)
 	if type(message) ~= "string" or message == "" then
 		return
@@ -225,6 +274,8 @@ function FishStat:OnChatMsgSkill(_, message)
 	end
 end
 
+--- Определяет линию навыка рыбной ловли текущего континента по карте игрока.
+-- @return number|nil ID линии навыка дополнения
 function FishStat:GetCurrentFishingSkillLineID()
 	if not C_Map or not C_Map.GetBestMapForUnit or not C_Map.GetMapInfo then
 		return nil
@@ -251,6 +302,8 @@ function FishStat:GetCurrentFishingSkillLineID()
 	return nil
 end
 
+--- Возвращает сведения о навыке рыбной ловли текущего континента (с кэшем и запасным API).
+-- @return table|nil `{name, skillLevel, maxSkillLevel, skillModifier, skillLineID, expansionName, levelsUnknown}`
 function FishStat:GetFishingSkillInfo()
 	local _, _, _, fishing = GetProfessions()
 	if not fishing then
@@ -301,17 +354,30 @@ function FishStat:GetFishingSkillInfo()
 	}
 end
 
+--- Форматирует строку навыка рыбной ловли для заголовка окна, с суффиксом яда.
+-- @param info table|nil данные навыка; если nil, запрашиваются заново
+-- @return string текст заголовка
+-- @return boolean показывать ли подсказку о недоступных уровнях
 function FishStat:FormatFishingSkill(info)
 	info = info or self:GetFishingSkillInfo()
+	--- Добавляет к тексту суффикс запаса яда.
+	-- @param text string текст навыка
+	-- @param showUnavailableTip boolean показывать ли подсказку
+	-- @return string
+	-- @return boolean
+	-- @local
+	local function withVenom(text, showUnavailableTip)
+		return text .. self:FormatVenomSuffix(), showUnavailableTip
+	end
 	if not info then
-		return L["FISHING_UNKNOWN"], false
+		return withVenom(L["FISHING_UNKNOWN"], false)
 	end
 
 	if info.levelsUnknown then
 		if info.name then
-			return L["FISHING_SKILL_UNAVAILABLE"]:format(info.name), true
+			return withVenom(L["FISHING_SKILL_UNAVAILABLE"]:format(info.name), true)
 		end
-		return L["FISHING_UNKNOWN"], false
+		return withVenom(L["FISHING_UNKNOWN"], false)
 	end
 
 	local text
@@ -327,9 +393,15 @@ function FishStat:FormatFishingSkill(info)
 	if info.skillModifier and info.skillModifier > 0 then
 		text = text .. L["FISHING_BONUS"]:format(info.skillModifier)
 	end
-	return text, false
+	return withVenom(text, false)
 end
 
+--- Возвращает или создаёт корзину улова для локации в указанном хранилище.
+-- @param store table сессия или общая история
+-- @param key string ключ локации
+-- @param displayName string|nil отображаемое имя локации
+-- @return table корзина предметов
+-- @local
 local function ensureBucket(store, key, displayName)
 	local bucket = store[key]
 	if not bucket then
@@ -341,6 +413,13 @@ local function ensureBucket(store, key, displayName)
 	return bucket
 end
 
+--- Добавляет пойманный предмет в сессию и в общую историю текущей локации.
+-- @param itemID number|nil ID предмета
+-- @param quantity number количество
+-- @param itemName string|nil имя
+-- @param itemLink string|nil ссылка
+-- @param quality number|nil качество
+-- @param texture string|number|nil иконка
 function FishStat:AddCatch(itemID, quantity, itemName, itemLink, quality, texture)
 	if not itemID or quantity <= 0 then
 		return
@@ -354,6 +433,9 @@ function FishStat:AddCatch(itemID, quantity, itemName, itemLink, quality, textur
 	local sessionBucket = ensureBucket(self.session, key, displayName)
 	local totalBucket = ensureBucket(self.db.char.total, key, displayName)
 
+	--- Добавляет предмет в корзину локации, обновляя счётчик и метаданные.
+	-- @param bucket table корзина локации
+	-- @local
 	local function addTo(bucket)
 		local entry = bucket[itemID]
 		if type(entry) ~= "table" then
@@ -378,6 +460,7 @@ function FishStat:AddCatch(itemID, quantity, itemName, itemLink, quality, textur
 	addTo(totalBucket)
 end
 
+--- Обрабатывает рыболовный лут из окна добычи; при пустых слотах включает разбор чата.
 function FishStat:ProcessFishingLoot()
 	if self.lootHandled then
 		return
@@ -386,7 +469,7 @@ function FishStat:ProcessFishingLoot()
 		return
 	end
 
-	-- If slots are already empty (fast autoloot), fall back to chat loot lines
+	-- Если слоты уже пусты (быстрый автолут), переключаемся на разбор строк чата
 	self.expectFishingChat = true
 	self.expectFishingChatUntil = GetTime() + 2
 
@@ -411,9 +494,14 @@ function FishStat:ProcessFishingLoot()
 		self.lootHandled = true
 		self.expectFishingChat = false
 		self:RefreshUI()
+		self:ScheduleVenomRescan()
 	end
 end
 
+--- Извлекает текстовый префикс до первого `%s` или `%d` из формата лута.
+-- @param fmt string|nil глобальная строка формата
+-- @return string|nil префикс
+-- @local
 local function formatPrefix(fmt)
 	if type(fmt) ~= "string" then
 		return nil
@@ -423,6 +511,9 @@ end
 
 local selfLootPrefixes
 
+--- Возвращает кэшированный список префиксов сообщений о собственной добыче.
+-- @return table массив префиксов
+-- @local
 local function getSelfLootPrefixes()
 	if selfLootPrefixes then
 		return selfLootPrefixes
@@ -443,6 +534,10 @@ local function getSelfLootPrefixes()
 	return selfLootPrefixes
 end
 
+--- Проверяет, является ли сообщение чата собственной добычей игрока.
+-- @param message string текст чата
+-- @return boolean
+-- @local
 local function isSelfLootMessage(message)
 	for _, prefix in ipairs(getSelfLootPrefixes()) do
 		if message:sub(1, #prefix) == prefix or message:find(prefix, 1, true) then
@@ -452,6 +547,15 @@ local function isSelfLootMessage(message)
 	return false
 end
 
+--- Разбирает сообщение о собственной добыче: ID, количество, имя, ссылка, качество, иконка.
+-- @param message string текст чата
+-- @return number|nil itemID
+-- @return number|nil quantity
+-- @return string|nil itemName
+-- @return string|nil link
+-- @return number|nil quality
+-- @return string|number|nil texture
+-- @local
 local function parseSelfLootMessage(message)
 	if type(message) ~= "string" or not isSelfLootMessage(message) then
 		return nil
@@ -485,8 +589,10 @@ local function parseSelfLootMessage(message)
 	return itemID, quantity, itemName, link, quality, texture
 end
 
+--- Запасной учёт рыболовного улова из `CHAT_MSG_LOOT`, когда слоты окна добычи уже пусты.
+-- @param message string текст сообщения о добыче
 function FishStat:ProcessFishingChatLoot(message)
-	-- Chat fallback only when slot reading failed (autoloot emptied the window)
+	-- Разбор чата только если слоты окна добычи уже пусты после автолута
 	if self.lootHandled or not self.expectFishingChat then
 		return
 	end
@@ -501,11 +607,16 @@ function FishStat:ProcessFishingChatLoot(message)
 	end
 
 	self:AddCatch(itemID, quantity, itemName, link, quality, texture)
-	-- Keep the chat window open: one cast can yield several items
+	-- Продлеваем окно ожидания чата: за один заброс может прийти несколько предметов
 	self.expectFishingChatUntil = GetTime() + 1.5
 	self:RefreshUI()
+	self:ScheduleVenomRescan()
 end
 
+--- Суммирует количество предметов в корзине локации.
+-- @param bucket table|nil корзина локации
+-- @return number суммарное количество
+-- @local
 local function countBucketTotal(bucket)
 	if not bucket then
 		return 0
@@ -523,6 +634,10 @@ local function countBucketTotal(bucket)
 	return total
 end
 
+--- Добавляет предметы корзины в объединённую таблицу по `itemID`.
+-- @param bucket table|nil корзина локации
+-- @param merged table аккумулятор `[itemID] = {count, name, link, quality, texture}`
+-- @local
 local function accumulateBucket(bucket, merged)
 	if not bucket then
 		return
@@ -562,6 +677,9 @@ local function accumulateBucket(bucket, merged)
 	end
 end
 
+--- Строит список улова для интерфейса: итог, предметы, хлам и цены сессии.
+-- @param useSession boolean true — сессия, false — общая история
+-- @return table массив строк `{kind, name, count, percent, ...}`
 function FishStat:GetCatchList(useSession)
 	local key = self:GetLocationKey()
 	local store = useSession and self.session or self.db.char.total
@@ -585,7 +703,7 @@ function FishStat:GetCatchList(useSession)
 	for itemID, entry in pairs(merged) do
 		local count = entry.count or 0
 		total = total + count
-		-- Enum.ItemQuality.Poor = 0 (grey junk)
+		-- Enum.ItemQuality.Poor = 0 (серый хлам)
 		if (entry.quality or 1) == 0 then
 			junkCount = junkCount + count
 		else
@@ -612,11 +730,15 @@ function FishStat:GetCatchList(useSession)
 		return a.count > b.count
 	end)
 
+	--- Доля количества от общего улова в процентах.
+	-- @param count number количество
+	-- @return number процент
+	-- @local
 	local function pct(count)
 		return (count / total) * 100
 	end
 
-	-- In session view (single zone), show all-time zone total in parentheses
+	-- В сессии по одной зоне в скобках показываем общий улов зоны за всё время
 	local zoneTotal
 	if useSession and not showAll then
 		zoneTotal = countBucketTotal(self.db.char.total[key])
@@ -650,7 +772,7 @@ function FishStat:GetCatchList(useSession)
 		}
 	end
 
-	-- Session-only: Auctionator prices (skip junk / BoP / quest bind)
+	-- Только для сессии: цены Auctionator (без хлама, персональных и квестовых предметов)
 	if useSession and self:IsAuctionatorReady() then
 		local sessionValue = 0
 		local bindCache = {}
@@ -680,6 +802,7 @@ function FishStat:GetCatchList(useSession)
 	return list
 end
 
+--- Сбрасывает статистику текущей сессии и исключения оценки инвентаря.
 function FishStat:ResetSession()
 	wipe(self.session)
 	if self.inventoryValueExcluded then

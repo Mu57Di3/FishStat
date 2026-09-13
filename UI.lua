@@ -12,6 +12,12 @@ local MAX_WIDTH, MAX_HEIGHT = 700, 900
 
 local QUALITY_COLORS = _G.ITEM_QUALITY_COLORS
 
+--- Возвращает цвет качества предмета из `ITEM_QUALITY_COLORS`.
+-- @param quality number|nil качество предмета
+-- @return number r
+-- @return number g
+-- @return number b
+-- @local
 local function qualityColor(quality)
 	local c = QUALITY_COLORS and QUALITY_COLORS[quality or 1]
 	if c then
@@ -20,6 +26,10 @@ local function qualityColor(quality)
 	return 1, 1, 1
 end
 
+--- Подсвечивает активную вкладку белым цветом, неактивную — золотым.
+-- @param btn Button кнопка вкладки
+-- @param active boolean активна ли вкладка
+-- @local
 local function setTabActive(btn, active)
 	btn:Enable()
 	local fs = btn:GetFontString()
@@ -33,6 +43,7 @@ local function setTabActive(btn, active)
 	end
 end
 
+--- Создаёт главное окно аддона, вкладки, списки улова и наживок.
 function FishStat:InitUI()
 	if self.frame then
 		return
@@ -81,7 +92,7 @@ function FishStat:InitUI()
 	frame:SetBackdropColor(0.05, 0.08, 0.12, 0.55)
 	frame:SetBackdropBorderColor(0.35, 0.55, 0.75, 1)
 
-	-- Title bar
+	-- Заголовок окна
 	local titleBar = CreateFrame("Frame", nil, frame)
 	titleBar:SetPoint("TOPLEFT", 4, -4)
 	titleBar:SetPoint("TOPRIGHT", -4, -4)
@@ -137,7 +148,7 @@ function FishStat:InitUI()
 		FishStat:HideWindow()
 	end)
 
-	-- Body (tabs + list)
+	-- Тело окна (вкладки + список)
 	local body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", titleBar, "BOTTOMLEFT", 0, -2)
 	body:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
@@ -225,7 +236,7 @@ function FishStat:InitUI()
 	showAllLabel:SetText(L["SHOW_ALL_SESSION"])
 	frame.showAllCheck = showAllCheck
 
-	-- Bait panel
+	-- Панель наживок
 	local baitPanel = CreateFrame("Frame", nil, body)
 	baitPanel:SetPoint("TOPLEFT", 4, -(TAB_HEIGHT + 4))
 	baitPanel:SetPoint("BOTTOMRIGHT", -4, 4)
@@ -251,14 +262,14 @@ function FishStat:InitUI()
 
 	local applyBtn = CreateFrame("Button", "FishStatApplyBaitButton", baitPanel, "SecureActionButtonTemplate,UIPanelButtonTemplate")
 	applyBtn:SetSize(110, 24)
-	-- Align with valueInventoryBtn on body (same bottom inset)
+	-- Выравнивание с valueInventoryBtn на теле окна (тот же отступ снизу)
 	applyBtn:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 4, 2)
 	applyBtn:SetText(L["APPLY"])
 	applyBtn:RegisterForClicks("AnyUp", "AnyDown")
 	applyBtn:Disable()
 	frame.applyBaitBtn = applyBtn
 
-	-- Inventory valuation (Auctionator) — bottom-right of body
+	-- Оценка инвентаря (Auctionator) — правый нижний угол тела окна
 	local valueBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
 	valueBtn:SetSize(150, 24)
 	valueBtn:SetPoint("BOTTOMRIGHT", -22, 2)
@@ -276,7 +287,7 @@ function FishStat:InitUI()
 	valueBtn:SetScript("OnLeave", GameTooltip_Hide)
 	frame.valueInventoryBtn = valueBtn
 
-	-- Bottom-right resize grip
+	-- Ручка изменения размера в правом нижнем углу
 	local resize = CreateFrame("Button", nil, frame)
 	resize:SetSize(16, 16)
 	resize:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -307,6 +318,7 @@ function FishStat:InitUI()
 	self:ApplyCollapsedState(true)
 end
 
+--- Сохраняет позицию и размер главного окна в настройки персонажа.
 function FishStat:SaveWindowPosition()
 	local frame = self.frame
 	if not frame then
@@ -324,10 +336,13 @@ function FishStat:SaveWindowPosition()
 	end
 end
 
+--- Проверяет, отображается ли главное окно.
+-- @return boolean
 function FishStat:IsWindowShown()
 	return self.frame and self.frame:IsShown()
 end
 
+--- Показывает главное окно. В бою показ откладывается до выхода из боя.
 function FishStat:ShowWindow()
 	self:InitUI()
 	if InCombatLockdown() then
@@ -339,6 +354,8 @@ function FishStat:ShowWindow()
 	self:RefreshUI()
 end
 
+--- Скрывает главное окно и окно оценки инвентаря.
+-- @param fromCombat boolean|nil true, если скрытие из-за входа в бой
 function FishStat:HideWindow(fromCombat)
 	if self.frame then
 		self.frame:Hide()
@@ -350,12 +367,15 @@ function FishStat:HideWindow(fromCombat)
 	end
 end
 
+--- Сворачивает или разворачивает главное окно.
 function FishStat:ToggleCollapsed()
 	local db = self.db.char.window
 	db.collapsed = not db.collapsed
 	self:ApplyCollapsedState()
 end
 
+--- Применяет свёрнутое или развёрнутое состояние главного окна.
+-- @param skipRefresh boolean|nil не вызывать `RefreshUI` после смены высоты
 function FishStat:ApplyCollapsedState(skipRefresh)
 	local frame = self.frame
 	if not frame then
@@ -366,7 +386,7 @@ function FishStat:ApplyCollapsedState(skipRefresh)
 		if not db.height or db.height < COLLAPSED_HEIGHT + 40 then
 			db.height = EXPANDED_HEIGHT_DEFAULT
 		else
-			-- keep last expanded height already stored
+			-- оставляем уже сохранённую высоту развёрнутого окна
 		end
 		frame.body:Hide()
 		frame:SetHeight(COLLAPSED_HEIGHT)
@@ -387,6 +407,11 @@ function FishStat:ApplyCollapsedState(skipRefresh)
 	end
 end
 
+--- Возвращает или создаёт строку списка улова по индексу.
+-- @param frame Frame главное окно
+-- @param index number индекс строки (с 1)
+-- @return Button строка списка
+-- @local
 local function acquireRow(frame, index)
 	local row = frame.rows[index]
 	if row then
@@ -446,6 +471,11 @@ local COUNT_ONLY_NAME_RIGHT = -78
 local COUNT_AND_PRICE_NAME_RIGHT = -197
 local BAIT_ROW_HEIGHT = 26
 
+--- Возвращает или создаёт строку списка наживок по индексу.
+-- @param frame Frame главное окно
+-- @param index number индекс строки (с 1)
+-- @return Button строка списка
+-- @local
 local function acquireBaitRow(frame, index)
 	local row = frame.baitRows[index]
 	if row then
@@ -495,6 +525,7 @@ local function acquireBaitRow(frame, index)
 	return row
 end
 
+--- Перерисовывает вкладку наживок: список, выделение и кнопку применения.
 function FishStat:RefreshBaitUI()
 	local frame = self.frame
 	if not frame or not frame.baitPanel then
@@ -565,6 +596,7 @@ function FishStat:RefreshBaitUI()
 	self:UpdateBaitSecureButton()
 end
 
+--- Обновляет заголовок, вкладки и список улова или наживок в главном окне.
 function FishStat:RefreshUI()
 	local frame = self.frame
 	if not frame or not frame:IsShown() then
