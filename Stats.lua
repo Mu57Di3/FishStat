@@ -547,6 +547,75 @@ local function isSelfLootMessage(message)
 	return false
 end
 
+--- Экранирует служебные символы Lua-шаблона.
+-- @param text string исходный текст
+-- @return string шаблон с литералами
+-- @local
+local function escapeLuaPattern(text)
+	return (text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
+end
+
+--- Превращает формат лута в шаблон, где единственный захват — количество `%d`.
+-- @param fmt string|nil глобальная строка формата
+-- @return string|nil шаблон
+-- @local
+local function formatToQuantityPattern(fmt)
+	if type(fmt) ~= "string" or not fmt:find("%%d", 1, true) then
+		return nil
+	end
+	local pattern = escapeLuaPattern(fmt)
+	pattern = pattern:gsub("%%%%s", ".+")
+	pattern = pattern:gsub("%%%%d", "(%%d+)")
+	return pattern
+end
+
+local multipleLootPatterns
+
+--- Возвращает кэшированные шаблоны сообщений о нескольких предметах.
+-- @return table массив шаблонов
+-- @local
+local function getMultipleLootPatterns()
+	if multipleLootPatterns then
+		return multipleLootPatterns
+	end
+	multipleLootPatterns = {}
+	local formats = {
+		LOOT_ITEM_SELF_MULTIPLE,
+		LOOT_ITEM_PUSHED_SELF_MULTIPLE,
+	}
+	for _, fmt in ipairs(formats) do
+		local pattern = formatToQuantityPattern(fmt)
+		if pattern then
+			multipleLootPatterns[#multipleLootPatterns + 1] = pattern
+		end
+	end
+	return multipleLootPatterns
+end
+
+--- Извлекает количество из сообщения о собственной добыче.
+-- Сначала по локальному формату `LOOT_ITEM_*_MULTIPLE`, затем по суффиксу после ссылки.
+-- @param message string текст чата
+-- @return number количество, минимум 1
+-- @local
+local function parseLootQuantity(message)
+	for _, pattern in ipairs(getMultipleLootPatterns()) do
+		local quantity = tonumber(message:match(pattern))
+		if quantity and quantity > 0 then
+			return quantity
+		end
+	end
+	-- Латинская x, кириллическая х и знак умножения — только после ссылки на предмет.
+	-- Отдельные шаблоны: в Lua 5.1 класс символов сравнивает байты и ломает UTF-8.
+	local suffix = message:match("|h|r%s*(.*)")
+	if suffix then
+		local quantity = tonumber(suffix:match("^x(%d+)") or suffix:match("^х(%d+)") or suffix:match("^×(%d+)"))
+		if quantity and quantity > 0 then
+			return quantity
+		end
+	end
+	return 1
+end
+
 --- Разбирает сообщение о собственной добыче: ID, количество, имя, ссылка, качество, иконка.
 -- @param message string текст чата
 -- @return number|nil itemID
@@ -571,7 +640,7 @@ local function parseSelfLootMessage(message)
 		return nil
 	end
 
-	local quantity = tonumber(message:match(".-|r.-x(%d+)")) or tonumber(message:match("x(%d+)")) or 1
+	local quantity = parseLootQuantity(message)
 	local itemName = link:match("%[(.-)%]")
 	local quality, texture = 1, nil
 
